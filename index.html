@@ -135,6 +135,7 @@
 
 <!-- BOTTOM -->
 <div id="bottom">
+  <div id="tourPick" class="hidden" style="display:flex; gap:7px; overflow-x:auto; padding:0 4px 8px"></div>
   <div id="tourBar" class="hidden" style="display:flex; gap:8px; align-items:center; padding:5px; margin:0 4px 8px; background:var(--panel); border:1px solid var(--line); border-radius:28px">
     <button class="btn icon" id="tourPrev" aria-label="Previous stop">‹</button>
     <div id="tourLbl" style="flex:1; text-align:center; font-size:13px; font-weight:600"></div>
@@ -162,6 +163,7 @@
         <h3 id="taleTitle">The Celestial Bear and the Hunters</h3>
         <div class="verified" id="taleStatus">● Verified · well-documented</div>
       </div>
+      <button class="chip hidden" id="taleVoice">Voice</button>
       <button class="chip" id="taleRate">1.0×</button>
     </div>
     <div class="tale" id="taleText"></div>
@@ -261,7 +263,7 @@ const SC=window.SKYCULT||{cultures:{},extra:[]};
 const SH=window.SKYHAND||{cultures:{},extra:[]}, ARTD=window.SKYART||{art:{},extra:[]};
 Object.assign(SC.cultures,SH.cultures); SC.extra=SC.extra.concat(SH.extra||[],ARTD.extra||[]);
 const TRADITIONS=[
- {id:"greek",name:"Greek",sub:"All 88 classical figures · Callisto & the Great Bear",group:"Spine",on:true},
+ {id:"greek",name:"Greek",sub:"Ptolemy’s 48 in the original Greek · later ones in Latin",group:"Spine",on:true},
  {id:"arabic",name:"Arabic",sub:"Old Arabian star pictures · star names",group:"Spine",on:true,cult:"arabic_hand"},
  {id:"chinese",name:"Chinese",sub:"Three Enclosures & 28 mansions · Běidǒu",group:"Spine",on:true,cult:"chinese"},
  {id:"hindu",name:"Hindu / Vedic",sub:"Nakshatras · Saptarishi, the Seven Sages",group:"Spine",on:true,cult:"indian"},
@@ -275,16 +277,32 @@ TRADITIONS.sort((a,b)=>GROUP_ORDER.indexOf(a.group)-GROUP_ORDER.indexOf(b.group)
 const TRAD={}; TRADITIONS.forEach(t=>TRAD[t.id]=t);
 for(const cid in SC.cultures){const c=SC.cultures[cid]; c.hipFig={}; c.figs.forEach(f=>f.l.forEach(l=>l.forEach(h=>{if(!(h in c.hipFig))c.hipFig[h]=f;})));}
 function lensCult(){const t=TRAD[activeLens]; return (t&&t.cult&&SC.cultures[t.cult])||null;}
-let showGhost=true, showArt=true, focusMode=true, focusKey=null;
+let showGhost=true, showArt=true, focusMode=true, focusKey=null, figColours=true;
+const PAL=["#F2B66D","#7FD1FF","#9BE7A8","#F7A1C4","#C3B1FF","#FF9E80","#E2E36F"], COLMAP={};
+// give neighbouring figures different colours (worked out once per lens)
+function figColourMap(lensId,figs){
+  if(COLMAP[lensId]) return COLMAP[lensId];
+  const pts=figs.map(f=>{let x=0,y=0,z=0,n=0; for(const l of f.segs)for(const h of l){const st=byHip[h]; if(!st)continue; const r=st[1]*D2R,d=st[2]*D2R; x+=Math.cos(d)*Math.cos(r); y+=Math.cos(d)*Math.sin(r); z+=Math.sin(d); n++;}
+    const m=Math.hypot(x,y,z)||1; return [x/m,y/m,z/m];});
+  const idx=[], map={}, lim=Math.cos(38*D2R);
+  figs.forEach((f,i)=>{ const used=new Array(PAL.length).fill(0);
+    for(let j=0;j<i;j++){const d=pts[i][0]*pts[j][0]+pts[i][1]*pts[j][1]+pts[i][2]*pts[j][2]; if(d>lim) used[idx[j]]+=1+(d-lim)*20;}
+    let best=0; for(let k=1;k<PAL.length;k++) if(used[k]<used[best]) best=k; idx[i]=best; map[f.key]=best; });
+  return COLMAP[lensId]=map;
+}
 const OLD_KNOWN=['greek','arabic','chinese','hindu','hungarian','mikmaq','egyptian','norse','sami','belarusian','potawatomi','navajo','inuit','maya','aztec','maori','hawaiian_starlines','boorong','northern_andes'];
 // remembered choices (per browser; fine to lose)
-function saveState(){try{localStorage.setItem('skylens.v1',JSON.stringify({on:TRADITIONS.filter(t=>t.on).map(t=>t.id),all:TRADITIONS.map(t=>t.id),lens:activeLens,ghost:showGhost,art:showArt,focus:focusMode,night:document.documentElement.classList.contains('night')}));}catch(e){}}
+function saveState(){try{localStorage.setItem('skylens.v1',JSON.stringify({on:TRADITIONS.filter(t=>t.on).map(t=>t.id),all:TRADITIONS.map(t=>t.id),lens:activeLens,ghost:showGhost,art:showArt,focus:focusMode,cols:figColours,night:document.documentElement.classList.contains('night')}));}catch(e){}}
 function loadState(){try{const st=JSON.parse(localStorage.getItem('skylens.v1')||'null'); if(!st)return;
   if(Array.isArray(st.on)&&st.on.length){const set=new Set(st.on), known=new Set(Array.isArray(st.all)?st.all:OLD_KNOWN);TRADITIONS.forEach(t=>{ if(known.has(t.id)) t.on=set.has(t.id); });} // lenses added since the last visit keep their default
-  if(typeof st.art==='boolean')showArt=st.art; if(typeof st.focus==='boolean')focusMode=st.focus;
+  if(typeof st.art==='boolean')showArt=st.art; if(typeof st.focus==='boolean')focusMode=st.focus; if(typeof st.cols==='boolean')figColours=st.cols;
   if(st.lens&&TRAD[st.lens]&&TRAD[st.lens].on)activeLens=st.lens; if(typeof st.ghost==='boolean')showGhost=st.ghost;
   if(st.night){document.documentElement.classList.add('night');}}catch(e){}}
 
+// Greek lens names: Ptolemy's constellations in the original Greek; the ones added since 1600 keep their Latin names
+const GREEK={"UMi":["Ἄρκτος Μικρά","Little She-Bear"],"UMa":["Ἄρκτος Μεγάλη","Great She-Bear"],"Dra":["Δράκων","Dragon"],"Cep":["Κηφεύς","Kepheus"],"Boo":["Βοώτης","Ploughman"],"CrB":["Στέφανος","Crown"],"Her":["Ἐν γόνασιν","Kneeler"],"Lyr":["Λύρα","Lyre"],"Cyg":["Ὄρνις","Bird"],"Cas":["Κασσιέπεια","Kassiepeia"],"Per":["Περσεύς","Perseus"],"Aur":["Ἡνίοχος","Charioteer"],"Oph":["Ὀφιοῦχος","Serpent-Holder"],"Ser":["Ὄφις","Serpent"],"Sge":["Ὀϊστός","Arrow"],"Aql":["Ἀετός","Eagle"],"Del":["Δελφίς","Dolphin"],"Equ":["Ἵππου Προτομή","Horse's Bust"],"Peg":["Ἵππος","Horse"],"And":["Ἀνδρομέδα","Andromeda"],"Tri":["Τρίγωνον","Triangle"],"Ari":["Κριός","Ram"],"Tau":["Ταῦρος","Bull"],"Gem":["Δίδυμοι","Twins"],"Cnc":["Καρκίνος","Crab"],"Leo":["Λέων","Lion"],"Vir":["Παρθένος","Maiden"],"Lib":["Χηλαί","Claws"],"Sco":["Σκορπίος","Scorpion"],"Sgr":["Τοξότης","Archer"],"Cap":["Αἰγόκερως","Goat-Horned"],"Aqr":["Ὑδροχόος","Water-Pourer"],"Psc":["Ἰχθύες","Fishes"],"Cet":["Κῆτος","Sea-Monster"],"Ori":["Ὠρίων","Orion"],"Eri":["Ποταμός","River"],"Lep":["Λαγωός","Hare"],"CMa":["Κύων","Dog"],"CMi":["Προκύων","Before the Dog"],"Car":["Ἀργώ","Ship Argo · keel"],"Pup":["Ἀργώ","Ship Argo · stern"],"Vel":["Ἀργώ","Ship Argo · sails"],"Hya":["Ὕδρος","Water-Snake"],"Crt":["Κρατήρ","Mixing-Bowl"],"Crv":["Κόραξ","Raven"],"Cen":["Κένταυρος","Centaur"],"Lup":["Θηρίον","Beast"],"Ara":["Θυμιατήριον","Censer"],"CrA":["Στέφανος Νότιος","Southern Crown"],"PsA":["Ἰχθὺς Νότιος","Southern Fish"],"Com":["Πλόκαμος","Lock of Hair"]};
+const LATIN={"Scl":["Sculptor","Sculptor"],"Sct":["Scutum","Shield"],"Pyx":["Pyxis","Compass"],"Cae":["Caelum","Engraving Tool"],"Cha":["Chamaeleon","Chameleon"],"CVn":["Canes Venatici","Hunting Dogs"],"Col":["Columba","Dove"],"Cir":["Circinus","Compass"],"Cru":["Crux","Southern Cross"],"Dor":["Dorado","Swordfish"],"Nor":["Norma","Carpenter's Square"],"For":["Fornax","Furnace"],"Cam":["Camelopardalis","Giraffe"],"Gru":["Grus","Crane"],"Hor":["Horologium","Clock"],"Hyi":["Hydrus","Male Water Snake"],"Ind":["Indus","Indian"],"Lac":["Lacerta","Lizard"],"Mon":["Monoceros","Unicorn"],"Lyn":["Lynx","Lynx"],"Ant":["Antlia","Air Pump"],"Mic":["Microscopium","Microscope"],"Mus":["Musca","Fly"],"Oct":["Octans","Octant"],"Aps":["Apus","Bird of Paradise"],"Pav":["Pavo","Peacock"],"Pic":["Pictor","Painter's Easel"],"LMi":["Leo Minor","Lesser Lion"],"Vul":["Vulpecula","Fox"],"Phe":["Phoenix","Phoenix"],"Vol":["Volans","Flying Fish"],"Ret":["Reticulum","Reticle"],"Sex":["Sextans","Sextant"],"Men":["Mensa","Table Mountain"],"Tel":["Telescopium","Telescope"],"Tuc":["Tucana","Toucan"],"Tra":["Triangulum Australe","Southern Triangle"]};
+function greekName(iau,fallback){const g=GREEK[iau]||LATIN[iau]; return g?g[0]+" · "+g[1]:fallback;}
 /* ---------- catalog indexing ---------- */
 const SD=window.SKYDATA;
 const byHip={}; SD.stars.forEach(s=>byHip[s[0]]=s); // [hip,ra,dec,mag,name]
@@ -487,7 +505,8 @@ function draw(){
   const figs=[];
   if(cult) for(const f of cult.figs){ let t=f.v&&f.n?(f.v+" · "+f.n):(f.v||f.n); if(t.length>34)t=f.n||f.v; figs.push({key:f.n+"|"+f.v,name:t,segs:f.l}); }
   else if(mik) figs.push({key:"bear",name:UMA_FIG.mikmaq.label.text,segs:UMA_FIG.mikmaq.lines});
-  else for(const c2 of SD.cons) figs.push({key:c2.iau,name:c2.name,segs:c2.lines.map(seg=>seg.filter(n=>typeof n==="number")),thin:c2.lines.map(seg=>seg[0]==="thin")});
+  else for(const c2 of SD.cons) figs.push({key:c2.iau,name:greekName(c2.iau,c2.name),segs:c2.lines.map(seg=>seg.filter(n=>typeof n==="number")),thin:c2.lines.map(seg=>seg[0]==="thin")});
+  const cmap=(figColours&&!nightMode)?figColourMap(activeLens,figs):null; for(const f of figs) f.col=cmap?PAL[cmap[f.key]||0]:accent;
   // where each figure sits on screen, and which one the view is aimed at
   const cxs=W/2, cys=Hh/2; let focus=null, fd=1e9, prev=null;
   for(const f of figs){ let sx=0,sy=0,n=0,dmin=1e9; const seen={};
@@ -505,9 +524,9 @@ function draw(){
     for(const c2 of SD.cons) for(const seg of c2.lines) drawSeg(seg.filter(n=>typeof n==="number"), ghost, 1);
     ctx.globalAlpha=1; }
   // lines: the aimed-at figure bright and heavy, the rest held back
-  const drawFig=(f,wd)=>{ f.segs.forEach((l,k)=>{ if(l.length===1){const q=starScreen[l[0]]; if(q){ctx.strokeStyle=accent;ctx.lineWidth=wd*0.8*DPR;ctx.beginPath();ctx.arc(q.x,q.y,9*DPR,0,7);ctx.stroke();}}
-    else drawSeg(l, accent, (f.thin&&f.thin[k])?wd*0.6:wd); }); };
-  ctx.globalAlpha=focus?.34:.8; for(const f of figs) if(f!==focus && f.n) drawFig(f, focus?1.2:1.6);
+  const drawFig=(f,wd)=>{ f.segs.forEach((l,k)=>{ if(l.length===1){const q=starScreen[l[0]]; if(q){ctx.strokeStyle=f.col;ctx.lineWidth=wd*0.8*DPR;ctx.beginPath();ctx.arc(q.x,q.y,9*DPR,0,7);ctx.stroke();}}
+    else drawSeg(l, f.col, (f.thin&&f.thin[k])?wd*0.6:wd); }); };
+  ctx.globalAlpha=focus?(cmap?.5:.34):.85; for(const f of figs) if(f!==focus && f.n) drawFig(f, focus?1.3:1.7);
   ctx.globalAlpha=1; if(focus) drawFig(focus,2.8);
   // star names: small and grey. The aimed-at figure's named stars get first claim on space; pills then avoid them
   const fstars={}; if(focus) for(const l of focus.segs) for(const h of l) fstars[h]=1;
@@ -517,15 +536,15 @@ function draw(){
   const fNames=Object.keys(fstars).map(h=>starScreen[h]).filter(st=>st&&st.name&&st.mag<3.2).sort((a,b)=>a.mag-b.mag), fDraw=[];
   for(const st of fNames){ const bx=nameBox(st); if(hits(bx))continue; placed.push(bx); fDraw.push(st); }
   // figure names: pills at the middle of each figure
-  const pill=(t,x,y,strong)=>{ ctx.font=`${strong?700:600} ${(strong?13:11)*DPR}px ${FONT}`; const w=ctx.measureText(t).width, ph=(strong?24:19)*DPR, pw=w+(strong?18:14)*DPR, r=ph/2;
+  const pill=(t,x,y,strong,col)=>{ ctx.font=`${strong?700:600} ${(strong?13:11)*DPR}px ${FONT}`; const w=ctx.measureText(t).width, ph=(strong?24:19)*DPR, pw=w+(strong?18:14)*DPR, r=ph/2;
     return {x:x-pw/2,y:y-ph/2,w:pw,h:ph,draw(){ const X=this.x,Y=this.y; ctx.beginPath(); ctx.moveTo(X+r,Y); ctx.lineTo(X+pw-r,Y); ctx.arc(X+pw-r,Y+r,r,-Math.PI/2,Math.PI/2); ctx.lineTo(X+r,Y+ph); ctx.arc(X+r,Y+r,r,Math.PI/2,Math.PI*1.5); ctx.closePath();
-      if(strong){ctx.globalAlpha=1;ctx.fillStyle=accent;ctx.fill();ctx.fillStyle=accentInk;}
-      else{ctx.globalAlpha=.8;ctx.fillStyle=panelCol;ctx.fill();ctx.globalAlpha=focus?.75:1;ctx.fillStyle=accent;}
+      if(strong){ctx.globalAlpha=1;ctx.fillStyle=col;ctx.fill();ctx.fillStyle=accentInk;}
+      else{ctx.globalAlpha=.82;ctx.fillStyle=panelCol;ctx.fill();ctx.globalAlpha=focus?.8:1;ctx.fillStyle=col;}
       ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(t,X+pw/2,Y+ph/2+0.5*DPR);ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.globalAlpha=1; }}; };
   const clampX=(o)=>{o.x=Math.max(6*DPR,Math.min(W-o.w-6*DPR,o.x));return o;};
-  let fp=null; if(focus){ for(const dy of [20,-24,46,-50,72,-76,20]){ fp=clampX(pill(focus.name,focus.cx,focus.cy+dy*DPR,true)); if(!hits(fp))break; } placed.push(fp); }
+  let fp=null; if(focus){ for(const dy of [20,-24,46,-50,72,-76,20]){ fp=clampX(pill(focus.name,focus.cx,focus.cy+dy*DPR,true,focus.col)); if(!hits(fp))break; } placed.push(fp); }
   const rest=figs.filter(f=>f!==focus&&f.n).sort((a,b)=>a.d-b.d); let shown=0;
-  for(const f of rest){ if(shown>=(focus?12:16))break; const o=clampX(pill(f.name,f.cx,f.cy+16*DPR,false)); if(hits(o))continue; placed.push(o); o.draw(); shown++; }
+  for(const f of rest){ if(shown>=(focus?12:16))break; const o=clampX(pill(f.name,f.cx,f.cy+16*DPR,false,f.col)); if(hits(o))continue; placed.push(o); o.draw(); shown++; }
   if(fp) fp.draw();
   ctx.font=`500 ${10*DPR}px ${FONT}`; ctx.fillStyle=dim;
   ctx.globalAlpha=.95; for(const st of fDraw) ctx.fillText(st.name,st.x+6*DPR,st.y-6*DPR);
@@ -602,7 +621,7 @@ function setMode(m){
   document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on',x.dataset.mode===m));
   if(MODE==="live" && haveOrient && m!=="live"){ const d=vecAzAlt(viewBasis().f); mapView.az=d.az; mapView.alt=Math.max(-5,Math.min(89,d.alt)); } // keep looking the same way
   MODE=m; locked=false; lockedView=null; smB=null; autoStatus=(m!=="tour"); panTo=null;
-  $('tourBar').classList.toggle('hidden',m!=="tour");
+  $('tourBar').classList.toggle('hidden',m!=="tour"); $('tourPick').classList.toggle('hidden',m!=="tour");
   if(m==="tour") startTour();
 }
 document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{
@@ -716,7 +735,7 @@ function subjTabs(s){ let k=Object.keys(s.tales).filter(id=>id==="more"||(TRAD[i
 function openSubject(s,ctx){
   curSubj=s; curCtx=ctx||{}; const T=TRAD[activeLens], f=curCtx.fig;
   if(f){ $('taleCon').textContent=f.v||f.n; $('taleSub').textContent=(f.v&&f.n?f.n+" · ":"")+T.name+" · "+s.name; }
-  else { $('taleCon').textContent=s.name; $('taleSub').textContent=s.sub; }
+  else { const gk=(activeLens==="greek"&&s.iau&&s.iau[0])?GREEK[s.iau[0]]:null; $('taleCon').textContent=gk?gk[0]:s.name; $('taleSub').textContent=gk?(s.name+" · "+s.sub):s.sub; }
   const tabs=subjTabs(s); showSubjTale(tabs.includes(activeLens)?activeLens:(tabs.includes("greek")?"greek":tabs[0]));
   $('taleSheet').classList.add('up');
 }
@@ -771,7 +790,8 @@ function openTale(iau,hip){
     renderTradTabs(); showTradition(activeLens in UMA_TALES?activeLens:"greek", hip);
   }else{
     const c=SD.cons.find(x=>x.iau===iau);
-    $('taleCon').textContent=c?c.name:iau; $('taleSub').textContent=(c?c.name:iau)+" ("+iau+")";
+    const gk=GREEK[iau], la=LATIN[iau];
+    $('taleCon').textContent=gk?gk[0]:(la?la[0]:(c?c.name:iau)); $('taleSub').textContent=gk?(gk[1]+" · "+(c?c.name:iau)+" ("+iau+")"):((c?c.name:iau)+" ("+iau+") · a later constellation, named in Latin");
     $('taleTrads').innerHTML=''; setTaleExtras(null,null);
     $('taleTitle').textContent="Greek / IAU figure";
     $('taleStatus').textContent="● Star names from IAU · fuller tales coming";
@@ -798,19 +818,37 @@ function showTradition(id,hip){ const tl=UMA_TALES[id]||UMA_TALES.greek;
 }
 $('taleClose').onclick=()=>$('taleSheet').classList.remove('up');
 
-/* ---------- speech ---------- */
+/* ---------- speech: Claude's voice where the viewer offers it, else the best device voice ---------- */
 const canSpeak=('speechSynthesis' in window)&&(typeof SpeechSynthesisUtterance!=='undefined');
-function stopSpeak(){try{speechSynthesis.cancel();}catch(e){} speaking=false;$('talePlay').textContent='▶';}
-$('talePlay').onclick=()=>{
-  if(speaking){stopSpeak();return;}
+let cTTS=null, usingClaude=false, devVoices=[], devVoice=null, speakSeq=0;
+try{ if(window.claude&&window.claude.use) window.claude.use('tts').then(t=>{ cTTS=t||null; if(cTTS){ try{cTTS.onState(({state})=>{ if(state==='idle'&&usingClaude){speaking=false;usingClaude=false;$('talePlay').textContent='▶';} });}catch(e){} updVoiceChip(); } }).catch(()=>{}); }catch(e){}
+function rankVoice(v){ const n=v.name||''; let r=0; if(/premium/i.test(n))r+=50; if(/enhanced/i.test(n))r+=40; if(/natural|neural|online/i.test(n))r+=35; if(/siri/i.test(n))r+=30;
+  if(/^(Samantha|Daniel|Karen|Moira|Tessa|Serena|Ava|Allison|Evan|Zoe|Google UK English Female|Google US English)/i.test(n))r+=15; if(/eloquence|Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley|Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Wobble|Zarvox|Trinoids|Whisper|Jester|Organ|Superstar|Junior|Ralph|Fred|Kathy/i.test(n))r-=60;
+  if(/en-GB|en_GB/.test(v.lang))r+=3; if(v.localService)r+=1; return r; }
+function loadVoices(){ if(!canSpeak)return; try{ devVoices=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang)).sort((a,b)=>rankVoice(b)-rankVoice(a));
+  let want=null; try{want=localStorage.getItem('skylens.voice');}catch(e){} devVoice=devVoices.find(v=>v.name===want)||devVoices[0]||null; updVoiceChip(); }catch(e){} }
+function updVoiceChip(){ const c=$('taleVoice'); if(!c)return; c.textContent=cTTS?'Claude voice':(devVoice?devVoice.name.replace(/\s*\(.*?\)\s*/g,' ').trim().slice(0,16):'Voice'); c.classList.toggle('hidden',!cTTS&&devVoices.length<2); }
+if(canSpeak){ loadVoices(); try{speechSynthesis.addEventListener('voiceschanged',loadVoices);}catch(e){} }
+function stopSpeak(){ speakSeq++; try{ if(usingClaude&&cTTS) cTTS.stop(); }catch(e){} try{ if(canSpeak) speechSynthesis.cancel(); }catch(e){} speaking=false; usingClaude=false; $('talePlay').textContent='▶'; }
+function taleLines(){ return [$('taleTitle').textContent+'.'].concat($('taleText').textContent.split(/\n\s*\n/)).map(t=>t.replace(/[•]/g,'').trim()).filter(Boolean); }
+function startSpeak(){
+  const lines=taleLines(), seq=++speakSeq;
+  if(cTTS){ usingClaude=true; speaking=true; $('talePlay').textContent='❚❚';
+    cTTS.speak(lines.map(t=>({text:t.slice(0,1990),voice:'buttery'})),{rate:Math.max(.7,Math.min(1.5,rate))}).then(()=>{ if(seq===speakSeq){speaking=false;usingClaude=false;$('talePlay').textContent='▶';} })
+      .catch(()=>{ if(seq!==speakSeq)return; usingClaude=false; if(canSpeak) deviceSpeak(lines,seq); else {speaking=false;$('talePlay').textContent='▶';} });
+    return; }
   if(!canSpeak){$('taleStatus').textContent='● Read-aloud is not available in this viewer';return;}
-  try{
-  const u=new SpeechSynthesisUtterance($('taleTitle').textContent+'. '+$('taleText').textContent);
-  u.rate=rate; u.onend=()=>{speaking=false;$('talePlay').textContent='▶';};
-  speechSynthesis.cancel(); speechSynthesis.speak(u); speaking=true; $('talePlay').textContent='❚❚';
-  }catch(e){speaking=false;$('taleStatus').textContent='● Read-aloud is not available in this viewer';}
-};
-$('taleRate').onclick=()=>{rate=rate>=1.5?0.8:rate+0.2; $('taleRate').textContent=rate.toFixed(1)+'×'; if(speaking){$('talePlay').click();$('talePlay').click();}};
+  deviceSpeak(lines,seq);
+}
+function deviceSpeak(lines,seq){ // one paragraph per utterance: steadier pacing, and long tales don't get cut off
+  try{ speechSynthesis.cancel(); speaking=true; $('talePlay').textContent='❚❚';
+    lines.forEach((t,k)=>{ const u=new SpeechSynthesisUtterance(t); if(devVoice){u.voice=devVoice;u.lang=devVoice.lang;} u.rate=rate*0.95; u.pitch=1;
+      if(k===lines.length-1) u.onend=()=>{ if(seq===speakSeq){speaking=false;$('talePlay').textContent='▶';} }; speechSynthesis.speak(u); });
+  }catch(e){speaking=false;$('talePlay').textContent='▶';$('taleStatus').textContent='● Read-aloud is not available in this viewer';}
+}
+$('talePlay').onclick=()=>{ if(speaking){stopSpeak();return;} startSpeak(); };
+$('taleRate').onclick=()=>{rate=rate>=1.4?0.8:Math.round((rate+0.2)*10)/10; $('taleRate').textContent=rate.toFixed(1)+'×'; if(speaking){stopSpeak();startSpeak();}};
+$('taleVoice').onclick=()=>{ if(cTTS||devVoices.length<2)return; const i=devVoices.indexOf(devVoice); devVoice=devVoices[(i+1)%devVoices.length]; try{localStorage.setItem('skylens.voice',devVoice.name);}catch(e){} updVoiceChip(); if(speaking){stopSpeak();} startSpeak(); };
 
 /* ---------- traditions sheet ---------- */
 function renderTrad(){const list=$('tradList');list.innerHTML='';
@@ -822,6 +860,9 @@ function renderTrad(){const list=$('tradList');list.innerHTML='';
   const g=document.createElement('label');g.className='tog';
   g.innerHTML=`<span class="box ${showGhost?'on':''}">${showGhost?'✓':''}</span><span style="flex:1"><b>Greek ghost lines</b><br><span class="star-meta">Faint classical figures behind other traditions, for orientation</span></span>`;
   g.onclick=()=>{showGhost=!showGhost;renderTrad();saveState();}; list.appendChild(g);
+  const fc=document.createElement('label');fc.className='tog';
+  fc.innerHTML=`<span class="box ${figColours?'on':''}">${figColours?'✓':''}</span><span style="flex:1"><b>Figure colours</b><br><span class="star-meta">Give neighbouring figures different colours (off in red night mode)</span></span>`;
+  fc.onclick=()=>{figColours=!figColours;renderTrad();saveState();}; list.appendChild(fc);
   const fm=document.createElement('label');fm.className='tog';
   fm.innerHTML=`<span class="box ${focusMode?'on':''}">${focusMode?'✓':''}</span><span style="flex:1"><b>Focus mode</b><br><span class="star-meta">Highlight the figure at the centre of the screen and fade the rest</span></span>`;
   fm.onclick=()=>{focusMode=!focusMode;renderTrad();saveState();}; list.appendChild(fm);
@@ -852,27 +893,33 @@ $('nightToggle').checked=document.documentElement.classList.contains('night');
 let TOUR={stops:[],i:0}, panTo=null;
 function brightestOf(iau){const c=SD.cons.find(x=>x.iau===iau); let hip=null; if(!c)return null;
   for(const seg of c.lines)for(const n of seg)if(typeof n==="number"&&byHip[n]&&(hip==null||byHip[n][3]<byHip[hip][3]))hip=n; return hip;}
+const TOURS=[{id:"best",name:"Tonight's best"},{id:"pole",name:"Around the pole"},{id:"zodiac",name:"The zodiac"},{id:"milky",name:"The Milky Way"}];
+let tourId="best"; const SUBJ_KEY={}; SUBJ.forEach(sj=>SUBJ_KEY[sj.key]=sj);
 function buildTour(){
-  const lst=lstDeg(new Date(),OBS.lon), stops=[], dark=sunAltNow()<-6;
-  for(const b of bodiesNow()){ if(b.id==="Sun")continue; if(!dark&&b.id!=="Moon")continue; const aa=bodyAltAz(b,lst);
-    if(aa.alt>8) stops.push({name:(b.id==="Moon"?"The Moon":b.name),key:-1000+stops.length,pos:l=>bodyAltAz(bodiesNow().find(x=>x.id===b.id)||b,l),open:()=>openBody(b.id)}); }
-  const cand=[{name:"The Big Dipper",hip:HIP.Alioth,open:()=>openTale("UMa")}]
-    .concat(SUBJ.map(sj=>({name:sj.name,hip:(sj.hips&&sj.hips[0])||brightestOf(sj.iau[0]),open:()=>openSubject(sj,{})})));
-  const add=c=>{const st=byHip[c.hip]; if(!st)return; const aa=altaz(st[1],st[2],OBS.lat,lst); if(aa.alt<15)return;
-    const circ=st[2]>90-OBS.lat+5, H=angDiff(lst,st[1]); // hour angle: larger = further west = sets sooner
-    stops.push({name:c.name,key:circ?-500:-H,pos:l=>altaz(st[1],st[2],OBS.lat,l),open:c.open}); };
-  cand.forEach(add);
-  if(stops.length<4) ["Boo","Aur","Peg","And","Per","Gem","Leo","Tau","CMa","Sco","Sgr","Vir","Her","UMi"].forEach(iau=>{const c=SD.cons.find(x=>x.iau===iau); if(c&&!SUBJ_IAU[iau]) add({name:c.name,hip:brightestOf(iau),open:()=>openTale(iau)});});
+  const lst=lstDeg(new Date(),OBS.lon), dark=sunAltNow()<-6, stops=[];
+  const star=(key)=>{ if(key==="dipper") return {name:"The Big Dipper",hip:HIP.Alioth,open:()=>openTale("UMa")};
+    const sj=SUBJ_KEY[key]; return sj?{name:sj.name,hip:(sj.hips&&sj.hips[0])||brightestOf(sj.iau[0]),open:()=>openSubject(sj,{})}:null; };
+  const addStar=(c,minAlt,fixed)=>{ if(!c)return; const st=byHip[c.hip]; if(!st)return; const aa=altaz(st[1],st[2],OBS.lat,lst); if(aa.alt<minAlt)return;
+    stops.push({name:c.name,alt:aa.alt,key:fixed!=null?fixed:-angDiff(lst,st[1]),pos:l=>altaz(st[1],st[2],OBS.lat,l),open:c.open}); }; // hour angle: west (setting soonest) first
+  const addBodies=(minAlt,first)=>{ for(const b of bodiesNow()){ if(b.id==="Sun")continue; if(!dark&&b.id!=="Moon")continue; const aa=bodyAltAz(b,lst); if(aa.alt<minAlt)continue;
+    stops.push({name:(b.id==="Moon"?"The Moon":b.name),alt:99,key:first?-1000+stops.length:-angDiff(lst,b.ra),pos:l=>bodyAltAz(bodiesNow().find(x=>x.id===b.id)||b,l),open:()=>openBody(b.id)}); } };
+  if(tourId==="pole"){ ["umi","dipper","dra","cep","cas","per","aur","and"].forEach((k,i)=>addStar(star(k),6,i)); }
+  else if(tourId==="zodiac"){ addBodies(6,false); ["psc","ari","tau","ple","gem","cnc","leo","vir","lib","sco","sgr","cap","aqr"].forEach(k=>addStar(star(k),8)); }
+  else if(tourId==="milky"){ ["sgr","sco","aql","sge","lyr","cyg","cep","cas","per","aur","tau","gem","ori","cma"].forEach(k=>addStar(star(k),8)); }
+  else { addBodies(8,true); const n0=stops.length; ["dipper"].concat(SUBJ.map(sj=>sj.key)).forEach(k=>addStar(star(k),20));
+    if(stops.length-n0>12){ const keep=new Set(stops.slice(n0).sort((a,b)=>b.alt-a.alt).slice(0,12)); for(let k=stops.length-1;k>=n0;k--) if(!keep.has(stops[k])) stops.splice(k,1); } }
   stops.sort((a,b)=>a.key-b.key); return stops;
 }
+function renderTourPick(){ const el=$('tourPick'); el.innerHTML='';
+  TOURS.forEach(t=>{const b=document.createElement('button'); b.className='chip'+(t.id===tourId?' on':''); b.textContent=t.name; b.onclick=()=>{tourId=t.id;startTour();}; el.appendChild(b);}); }
 function tourGo(i){
-  const n=TOUR.stops.length; if(!n){ setStatus("Nothing well placed right now — try Map"); $('tourLbl').textContent="Nothing well placed right now"; return; }
+  const n=TOUR.stops.length; if(!n){ setStatus("Nothing well placed right now — try Map"); $('tourLbl').textContent="Nothing from this tour is up right now"; return; }
   TOUR.i=((i%n)+n)%n; const st=TOUR.stops[TOUR.i], aa=st.pos(lstDeg(new Date(),OBS.lon));
   panTo={az:aa.az,alt:Math.max(-5,Math.min(89,aa.alt))};
   $('tourLbl').textContent=(TOUR.i+1)+" of "+n+" · "+st.name;
   setStatus("Tour · "+st.name+" · "+card16(aa.az)+", "+Math.round(aa.alt)+"° up");
 }
-function startTour(){ autoStatus=false; TOUR.stops=buildTour(); tourGo(0); }
+function startTour(){ autoStatus=false; renderTourPick(); TOUR.stops=buildTour(); tourGo(0); }
 $('tourPrev').onclick=()=>tourGo(TOUR.i-1);
 $('tourNext').onclick=()=>tourGo(TOUR.i+1);
 $('tourTale').onclick=()=>{ const st=TOUR.stops[TOUR.i]; if(st) st.open(); };
