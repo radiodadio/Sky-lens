@@ -275,13 +275,13 @@ TRADITIONS.sort((a,b)=>GROUP_ORDER.indexOf(a.group)-GROUP_ORDER.indexOf(b.group)
 const TRAD={}; TRADITIONS.forEach(t=>TRAD[t.id]=t);
 for(const cid in SC.cultures){const c=SC.cultures[cid]; c.hipFig={}; c.figs.forEach(f=>f.l.forEach(l=>l.forEach(h=>{if(!(h in c.hipFig))c.hipFig[h]=f;})));}
 function lensCult(){const t=TRAD[activeLens]; return (t&&t.cult&&SC.cultures[t.cult])||null;}
-let showGhost=true, showArt=true;
+let showGhost=true, showArt=true, focusMode=true, focusKey=null;
 const OLD_KNOWN=['greek','arabic','chinese','hindu','hungarian','mikmaq','egyptian','norse','sami','belarusian','potawatomi','navajo','inuit','maya','aztec','maori','hawaiian_starlines','boorong','northern_andes'];
 // remembered choices (per browser; fine to lose)
-function saveState(){try{localStorage.setItem('skylens.v1',JSON.stringify({on:TRADITIONS.filter(t=>t.on).map(t=>t.id),all:TRADITIONS.map(t=>t.id),lens:activeLens,ghost:showGhost,art:showArt,night:document.documentElement.classList.contains('night')}));}catch(e){}}
+function saveState(){try{localStorage.setItem('skylens.v1',JSON.stringify({on:TRADITIONS.filter(t=>t.on).map(t=>t.id),all:TRADITIONS.map(t=>t.id),lens:activeLens,ghost:showGhost,art:showArt,focus:focusMode,night:document.documentElement.classList.contains('night')}));}catch(e){}}
 function loadState(){try{const st=JSON.parse(localStorage.getItem('skylens.v1')||'null'); if(!st)return;
   if(Array.isArray(st.on)&&st.on.length){const set=new Set(st.on), known=new Set(Array.isArray(st.all)?st.all:OLD_KNOWN);TRADITIONS.forEach(t=>{ if(known.has(t.id)) t.on=set.has(t.id); });} // lenses added since the last visit keep their default
-  if(typeof st.art==='boolean')showArt=st.art;
+  if(typeof st.art==='boolean')showArt=st.art; if(typeof st.focus==='boolean')focusMode=st.focus;
   if(st.lens&&TRAD[st.lens]&&TRAD[st.lens].on)activeLens=st.lens; if(typeof st.ghost==='boolean')showGhost=st.ghost;
   if(st.night){document.documentElement.classList.add('night');}}catch(e){}}
 
@@ -442,7 +442,7 @@ function draw(){
   const lst=lstDeg(new Date(),OBS.lon), B=viewBasis(), focal=(Hh/2)/Math.tan(FOV/2);
   ctx.clearRect(0,0,W,Hh);
   starScreen={};
-  const starCol=css('--star'), accent=css('--accent'), ghost=css('--ghost'), dim=css('--dim');
+  const starCol=css('--star'), accent=css('--accent'), ghost=css('--ghost'), dim=css('--dim'), panelCol=css('--panel'), accentInk=css('--accent-ink');
   const FONT='-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
   // horizon + compass points
   ctx.strokeStyle=ghost; ctx.globalAlpha=.6; ctx.lineWidth=1.2*DPR; ctx.beginPath(); let pen=false;
@@ -479,59 +479,58 @@ function draw(){
   // tour: ring around the current stop
   if(MODE==="tour" && TOUR.stops.length){ const q=TOUR.stops[TOUR.i].pos(lst), p=project(dirVec(q.az,q.alt),B,focal);
     if(p){ctx.globalAlpha=.75;ctx.strokeStyle=accent;ctx.lineWidth=1.6*DPR;ctx.setLineDash([6*DPR,5*DPR]);ctx.beginPath();ctx.arc(p.x,p.y,34*DPR,0,7);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;} }
-  // constellation artwork behind the Greek figures
-  if(showArt && activeLens==="greek") drawArt(lst,B,focal,nightMode);
-  // figure lines
+  // ---- figures: one list for whichever lens is active ----
   const drawSeg=(hips,col,wd)=>{ctx.strokeStyle=col;ctx.lineWidth=wd*DPR;
     for(let i=0;i<hips.length-1;i++){const A=starScreen[hips[i]],Bp=starScreen[hips[i+1]];
       if(A&&Bp){ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(Bp.x,Bp.y);ctx.stroke();}}};
   const mik=(activeLens==="mikmaq"), cult=lensCult(), under=(mik||!!cult);
-  if(!under || showGhost){
-    if(under) ctx.globalAlpha=cult?.5:1;
-    for(const c2 of SD.cons){
-      const isUMa=(c2.iau==="UMa");
-      for(const seg of c2.lines){const hips=seg.filter(n=>typeof n==="number");
-        if(under) drawSeg(hips, ghost, 1); // Greek sky as faint ghost lines behind another tradition's figures
-        else drawSeg(hips, accent, (seg[0]==="thin"?1:(isUMa?2.3:1.6)));}
-    }
-    ctx.globalAlpha=1;
-  }
-  const figLabels=[];
-  if(cult){
-    for(const f of cult.figs){ let best=null;
-      for(const l of f.l){ if(l.length===1){const q=starScreen[l[0]]; if(q){ctx.strokeStyle=accent;ctx.lineWidth=1.6*DPR;ctx.beginPath();ctx.arc(q.x,q.y,9*DPR,0,7);ctx.stroke();}} else drawSeg(l, accent, 2);
-        for(const h of l){const q=starScreen[h]; if(q&&q.x>0&&q.x<W&&q.y>0&&q.y<Hh&&(!best||q.mag<best.mag))best=q;} }
-      if(best) figLabels.push({s:best,f});
-    }
-  }
-  if(mik){
-    for(const seg of UMA_FIG.mikmaq.lines) drawSeg(seg, accent, 2.3);
-    const lp=starScreen[UMA_FIG.mikmaq.label.hip]; if(lp){ctx.fillStyle=accent;ctx.font=`600 ${13*DPR}px ${FONT}`;ctx.fillText(UMA_FIG.mikmaq.label.text, lp.x+8*DPR, lp.y-8*DPR);}
-  } else if(LENS_LABEL[activeLens]){
-    const lp=starScreen[HIP.Megrez]; if(lp){ctx.fillStyle=accent;ctx.font=`600 ${13*DPR}px ${FONT}`;ctx.fillText(LENS_LABEL[activeLens], lp.x+8*DPR, lp.y-10*DPR);}
-  }
-  // labels: named bright stars
-  ctx.fillStyle=dim; ctx.font=`500 ${11*DPR}px ${FONT}`;
-  for(const hip in starScreen){const s=starScreen[hip]; if(s.name && s.mag<(cult?1.6:2.3)){ctx.fillText(s.name,s.x+6*DPR,s.y-6*DPR);}}
-  ctx.font=`600 ${12*DPR}px ${FONT}`;
-  if(cult){
-    // this tradition's own figure names; when the sky is crowded (Chinese), label the brightest ones only
-    figLabels.sort((a,b)=>a.s.mag-b.s.mag);
-    ctx.fillStyle=accent; ctx.globalAlpha=.95;
-    const placed=[]; let shown=0;
-    for(const o of figLabels){ if(shown>=18)break; const f=o.f; let t=f.v&&f.n?(f.v+" · "+f.n):(f.v||f.n); if(t.length>34)t=f.n||f.v;
-      const x=o.s.x+6*DPR, y=o.s.y+14*DPR, w=ctx.measureText(t).width, h=15*DPR;
-      if(placed.some(r=>x<r.x+r.w+4*DPR&&x+w+4*DPR>r.x&&y<r.y+r.h&&y+h>r.y)) continue; // don't stack labels on each other
-      placed.push({x,y,w,h}); shown++; ctx.fillText(t,x,y);}
-    ctx.globalAlpha=1;
-  } else {
-    // constellation name near its brightest on-screen star
-    for(const c2 of SD.cons){
-      if(mik && c2.iau==="UMa") continue;
-      let best=null;for(const seg of c2.lines)for(const n of seg){if(typeof n==="number"&&starScreen[n]&&(!best||starScreen[n].mag<best.mag))best=starScreen[n];}
-      if(best){ctx.fillStyle=mik?ghost:accent;ctx.globalAlpha=.9;ctx.fillText(c2.name,best.x+6*DPR,best.y+14*DPR);ctx.globalAlpha=1;}
-    }
-  }
+  const figs=[];
+  if(cult) for(const f of cult.figs){ let t=f.v&&f.n?(f.v+" · "+f.n):(f.v||f.n); if(t.length>34)t=f.n||f.v; figs.push({key:f.n+"|"+f.v,name:t,segs:f.l}); }
+  else if(mik) figs.push({key:"bear",name:UMA_FIG.mikmaq.label.text,segs:UMA_FIG.mikmaq.lines});
+  else for(const c2 of SD.cons) figs.push({key:c2.iau,name:c2.name,segs:c2.lines.map(seg=>seg.filter(n=>typeof n==="number")),thin:c2.lines.map(seg=>seg[0]==="thin")});
+  // where each figure sits on screen, and which one the view is aimed at
+  const cxs=W/2, cys=Hh/2; let focus=null, fd=1e9, prev=null;
+  for(const f of figs){ let sx=0,sy=0,n=0,dmin=1e9; const seen={};
+    for(const l of f.segs) for(const h of l){ if(seen[h])continue; seen[h]=1; const q=starScreen[h]; if(!q||q.x<0||q.x>W||q.y<0||q.y>Hh)continue;
+      sx+=q.x; sy+=q.y; n++; const d=Math.hypot(q.x-cxs,q.y-cys); if(d<dmin)dmin=d; }
+    f.n=n; if(!n)continue; f.cx=sx/n; f.cy=sy/n; f.d=Math.min(dmin,Math.hypot(f.cx-cxs,f.cy-cys)*0.8);
+    if(f.key===focusKey) prev=f; if(f.d<fd){fd=f.d;focus=f;} }
+  if(prev && prev.d<fd*1.25+12*DPR) focus=prev;            // don't flicker between neighbours
+  if(!focusMode || !focus || focus.d>Hh*0.3) focus=null;   // nothing near the centre: no figure is singled out
+  focusKey=focus?focus.key:null;
+  // constellation artwork behind the Greek figures
+  if(showArt && activeLens==="greek") drawArt(lst,B,focal,nightMode,focusMode?focusKey:undefined);
+  // Greek sky as faint ghost lines behind another tradition's figures
+  if(under && showGhost){ ctx.globalAlpha=focus?.3:.5;
+    for(const c2 of SD.cons) for(const seg of c2.lines) drawSeg(seg.filter(n=>typeof n==="number"), ghost, 1);
+    ctx.globalAlpha=1; }
+  // lines: the aimed-at figure bright and heavy, the rest held back
+  const drawFig=(f,wd)=>{ f.segs.forEach((l,k)=>{ if(l.length===1){const q=starScreen[l[0]]; if(q){ctx.strokeStyle=accent;ctx.lineWidth=wd*0.8*DPR;ctx.beginPath();ctx.arc(q.x,q.y,9*DPR,0,7);ctx.stroke();}}
+    else drawSeg(l, accent, (f.thin&&f.thin[k])?wd*0.6:wd); }); };
+  ctx.globalAlpha=focus?.34:.8; for(const f of figs) if(f!==focus && f.n) drawFig(f, focus?1.2:1.6);
+  ctx.globalAlpha=1; if(focus) drawFig(focus,2.8);
+  // star names: small and grey. The aimed-at figure's named stars get first claim on space; pills then avoid them
+  const fstars={}; if(focus) for(const l of focus.segs) for(const h of l) fstars[h]=1;
+  ctx.font=`500 ${10*DPR}px ${FONT}`;
+  const placed=[], hits=(a)=>placed.some(r=>a.x<r.x+r.w+5*DPR&&a.x+a.w+5*DPR>r.x&&a.y<r.y+r.h+3*DPR&&a.y+a.h+3*DPR>r.y);
+  const nameBox=st=>({x:st.x+6*DPR,y:st.y-18*DPR,w:ctx.measureText(st.name).width,h:16*DPR});
+  const fNames=Object.keys(fstars).map(h=>starScreen[h]).filter(st=>st&&st.name&&st.mag<3.2).sort((a,b)=>a.mag-b.mag), fDraw=[];
+  for(const st of fNames){ const bx=nameBox(st); if(hits(bx))continue; placed.push(bx); fDraw.push(st); }
+  // figure names: pills at the middle of each figure
+  const pill=(t,x,y,strong)=>{ ctx.font=`${strong?700:600} ${(strong?13:11)*DPR}px ${FONT}`; const w=ctx.measureText(t).width, ph=(strong?24:19)*DPR, pw=w+(strong?18:14)*DPR, r=ph/2;
+    return {x:x-pw/2,y:y-ph/2,w:pw,h:ph,draw(){ const X=this.x,Y=this.y; ctx.beginPath(); ctx.moveTo(X+r,Y); ctx.lineTo(X+pw-r,Y); ctx.arc(X+pw-r,Y+r,r,-Math.PI/2,Math.PI/2); ctx.lineTo(X+r,Y+ph); ctx.arc(X+r,Y+r,r,Math.PI/2,Math.PI*1.5); ctx.closePath();
+      if(strong){ctx.globalAlpha=1;ctx.fillStyle=accent;ctx.fill();ctx.fillStyle=accentInk;}
+      else{ctx.globalAlpha=.8;ctx.fillStyle=panelCol;ctx.fill();ctx.globalAlpha=focus?.75:1;ctx.fillStyle=accent;}
+      ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(t,X+pw/2,Y+ph/2+0.5*DPR);ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.globalAlpha=1; }}; };
+  const clampX=(o)=>{o.x=Math.max(6*DPR,Math.min(W-o.w-6*DPR,o.x));return o;};
+  let fp=null; if(focus){ for(const dy of [20,-24,46,-50,72,-76,20]){ fp=clampX(pill(focus.name,focus.cx,focus.cy+dy*DPR,true)); if(!hits(fp))break; } placed.push(fp); }
+  const rest=figs.filter(f=>f!==focus&&f.n).sort((a,b)=>a.d-b.d); let shown=0;
+  for(const f of rest){ if(shown>=(focus?12:16))break; const o=clampX(pill(f.name,f.cx,f.cy+16*DPR,false)); if(hits(o))continue; placed.push(o); o.draw(); shown++; }
+  if(fp) fp.draw();
+  ctx.font=`500 ${10*DPR}px ${FONT}`; ctx.fillStyle=dim;
+  ctx.globalAlpha=.95; for(const st of fDraw) ctx.fillText(st.name,st.x+6*DPR,st.y-6*DPR);
+  ctx.globalAlpha=.5; for(const hip in starScreen){const st=starScreen[hip]; if(!st.name||st.mag>=1.3||fstars[hip])continue; const bx=nameBox(st); if(hits(bx))continue; ctx.fillText(st.name,st.x+6*DPR,st.y-6*DPR);}
+  ctx.globalAlpha=1;
   // live read-out of where the view is aimed
   if((frameN++%8)===0){
     const d=vecAzAlt(B.f), where=CARD8[Math.round(d.az/45)%8]+" · "+Math.round(d.alt)+"° up";
@@ -553,7 +552,7 @@ function artTinted(iau,night){
     x.drawImage(o.img,0,0,e.s[0],e.s[1]); x.globalCompositeOperation='source-in'; x.fillStyle=night?'#C2473C':'#8FA6DC'; x.fillRect(0,0,c.width,c.height); o.t[k]=c; }
   return o.t[k];
 }
-function drawArt(lst,B,focal,night){
+function drawArt(lst,B,focal,night,fkey){
   for(const iau in ARTD.art){ const e=ARTD.art[iau], q=[]; let ok=true, near=false;
     for(const a of e.a){ const st=byHip[a[2]]; if(!st){ok=false;break;} const aa=altaz(st[1],st[2],OBS.lat,lst), p=project(dirVec(aa.az,aa.alt),B,focal);
       if(!p||p.z<0.25){ok=false;break;} q.push(p); if(p.x>-W*0.4&&p.x<W*1.4&&p.y>-Hh*0.4&&p.y<Hh*1.4) near=true; }
@@ -562,7 +561,7 @@ function drawArt(lst,B,focal,night){
     const [x1,y1]=e.a[0],[x2,y2]=e.a[1],[x3,y3]=e.a[2], det=x1*(y2-y3)-y1*(x2-x3)+(x2*y3-x3*y2); if(Math.abs(det)<1e-6) continue;
     const sol=(u1,u2,u3)=>[(u1*(y2-y3)+u2*(y3-y1)+u3*(y1-y2))/det,(u1*(x3-x2)+u2*(x1-x3)+u3*(x2-x1))/det,(u1*(x2*y3-x3*y2)+u2*(x3*y1-x1*y3)+u3*(x1*y2-x2*y1))/det];
     const [a,c,e2]=sol(q[0].x,q[1].x,q[2].x), [b,d,f]=sol(q[0].y,q[1].y,q[2].y);
-    ctx.save(); ctx.globalAlpha=night?.38:.42; ctx.setTransform(a,b,c,d,e2,f); ctx.drawImage(im,0,0,e.s[0],e.s[1]); ctx.restore();
+    ctx.save(); ctx.globalAlpha=(night?.38:.42)*(fkey===undefined?1:(fkey===iau?1.25:(fkey?0.4:0.8))); ctx.setTransform(a,b,c,d,e2,f); ctx.drawImage(im,0,0,e.s[0],e.s[1]); ctx.restore();
   }
 }
 function conLines(iau){const c=SD.cons.find(x=>x.iau===iau);return c?c.lines:[];}
@@ -823,6 +822,9 @@ function renderTrad(){const list=$('tradList');list.innerHTML='';
   const g=document.createElement('label');g.className='tog';
   g.innerHTML=`<span class="box ${showGhost?'on':''}">${showGhost?'✓':''}</span><span style="flex:1"><b>Greek ghost lines</b><br><span class="star-meta">Faint classical figures behind other traditions, for orientation</span></span>`;
   g.onclick=()=>{showGhost=!showGhost;renderTrad();saveState();}; list.appendChild(g);
+  const fm=document.createElement('label');fm.className='tog';
+  fm.innerHTML=`<span class="box ${focusMode?'on':''}">${focusMode?'✓':''}</span><span style="flex:1"><b>Focus mode</b><br><span class="star-meta">Highlight the figure at the centre of the screen and fade the rest</span></span>`;
+  fm.onclick=()=>{focusMode=!focusMode;renderTrad();saveState();}; list.appendChild(fm);
   const a=document.createElement('label');a.className='tog';
   a.innerHTML=`<span class="box ${showArt?'on':''}">${showArt?'✓':''}</span><span style="flex:1"><b>Constellation artwork</b><br><span class="star-meta">Drawings behind the Greek figures (Greek lens)</span></span>`;
   a.onclick=()=>{showArt=!showArt;renderTrad();saveState();}; list.appendChild(a);
