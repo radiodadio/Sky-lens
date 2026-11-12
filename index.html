@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="googlebot" content="noindex, nofollow">
 <title>Sky Lens</title>
 <style>
   :root{
@@ -83,6 +85,16 @@
 <body>
 <video id="cam" playsinline muted></video>
 <canvas id="sky"></canvas>
+
+<!-- PASSCODE GATE -->
+<div id="gate" class="overlay" style="z-index:100; justify-content:center; gap:14px">
+  <h2>Sky Lens</h2>
+  <div class="mut">Enter the passcode to open.</div>
+  <input id="gateIn" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="Passcode"
+    style="height:52px; border-radius:14px; border:1px solid var(--line); background:var(--panel2); color:var(--text); font-size:18px; padding:0 14px">
+  <button class="btn accent" id="gateGo" style="height:52px; justify-content:center; font-size:16px">Open</button>
+  <div class="mut" id="gateMsg" style="min-height:20px"></div>
+</div>
 
 <!-- ALIGN / LAUNCH GATE -->
 <div id="align" class="overlay">
@@ -165,6 +177,36 @@
   </div>
 </div>
 
+<script>
+/* ---------- passcode gate (keeps casual visitors out; not real security) ---------- */
+(function(){
+  const WANT="ebd7410612e8fb3a83b8779968e82d4a189100a97aef78cd6d0d5dada487ae72";
+  function sha256(str){ // compact pure-JS SHA-256 (works without crypto.subtle)
+    const K=[],H=[]; let n=2,c=0; const isP=x=>{for(let i=2;i*i<=x;i++)if(x%i===0)return false;return true;};
+    const frac=x=>((x-Math.floor(x))*4294967296)>>>0;
+    while(c<64){ if(isP(n)){ if(c<8)H[c]=frac(Math.pow(n,1/2)); K[c++]=frac(Math.pow(n,1/3)); } n++; }
+    const b=Array.from(new TextEncoder().encode(str)), l=b.length*8; b.push(128); while(b.length%64!==56)b.push(0);
+    for(let i=7;i>=0;i--)b.push(i>3?0:(l>>>(i*8))&255);
+    const rr=(x,k)=>(x>>>k)|(x<<(32-k)); const h=H.slice();
+    for(let o=0;o<b.length;o+=64){ const w=[];
+      for(let i=0;i<16;i++)w[i]=(b[o+4*i]<<24|b[o+4*i+1]<<16|b[o+4*i+2]<<8|b[o+4*i+3])>>>0;
+      for(let i=16;i<64;i++){const s0=rr(w[i-15],7)^rr(w[i-15],18)^(w[i-15]>>>3),s1=rr(w[i-2],17)^rr(w[i-2],19)^(w[i-2]>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;}
+      let [a,bb,cc,d,e,f,g,hh]=h;
+      for(let i=0;i<64;i++){const S1=rr(e,6)^rr(e,11)^rr(e,25),ch=(e&f)^(~e&g),t1=(hh+S1+ch+K[i]+w[i])>>>0,S0=rr(a,2)^rr(a,13)^rr(a,22),mj=(a&bb)^(a&cc)^(bb&cc),t2=(S0+mj)>>>0;
+        hh=g;g=f;f=e;e=(d+t1)>>>0;d=cc;cc=bb;bb=a;a=(t1+t2)>>>0;}
+      [a,bb,cc,d,e,f,g,hh].forEach((v,i)=>h[i]=(h[i]+v)>>>0);
+    }
+    return h.map(v=>('00000000'+v.toString(16)).slice(-8)).join('');
+  }
+  const gate=document.getElementById('gate'), inp=document.getElementById('gateIn'), msg=document.getElementById('gateMsg');
+  const open=()=>{gate.classList.add('hidden');};
+  try{ if(localStorage.getItem('skylens.pass')===WANT) open(); }catch(e){}
+  function tryIt(){ if(sha256("skylens:"+inp.value.trim().toLowerCase())===WANT){ try{localStorage.setItem('skylens.pass',WANT);}catch(e){} open(); }
+    else{ msg.textContent="That's not it — try again."; inp.value=''; inp.focus(); } }
+  document.getElementById('gateGo').onclick=tryIt;
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter') tryIt(); });
+})();
+</script>
 <script src="skydata.js"></script>
 <script src="skycultures.js"></script>
 <script>
