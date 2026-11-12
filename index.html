@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Sky Lens</title>
+<style>
+  :root{
+    --accent:#F2B66D; --accent-ink:#1A1206; --ground:#0B1020; --panel:#141B30;
+    --panel2:#161D33; --line:#2A3352; --text:#EEF1F8; --dim:#A9B2C8; --ghost:#6FA8C9;
+    --star:#FFFFFF;
+  }
+  :root.night{
+    --accent:#FF6B5A; --accent-ink:#1A0806; --ground:#0A0404; --panel:#200A0A;
+    --panel2:#240C0C; --line:#3A1414; --text:#F2C9C4; --dim:#B98B86; --ghost:#A3524B;
+    --star:#FFD9D2;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; height:100%; background:var(--ground); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; overflow:hidden; overscroll-behavior:none}
+  #cam{position:fixed; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .4s; z-index:0}
+  #cam.on{opacity:.55}
+  #sky{position:fixed; inset:0; z-index:1; touch-action:none}
+  .btn{border:1px solid var(--line); background:var(--panel2); color:var(--text);
+    border-radius:22px; height:44px; padding:0 14px; font-size:14px; font-weight:600; display:inline-flex; align-items:center; gap:7px}
+  .btn.accent{background:var(--accent); color:var(--accent-ink); border:none}
+  .icon{width:44px; height:44px; padding:0; justify-content:center}
+  .chip{height:36px; padding:0 13px; border-radius:18px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--dim); font-size:13px; font-weight:600; white-space:nowrap}
+  .chip.on{border:2px solid var(--accent); background:#2A2215; color:var(--accent)}
+  :root.night .chip.on{background:#2A0E0C}
+
+  /* top bar */
+  #top{position:fixed; top:0; left:0; right:0; z-index:5; display:flex; justify-content:space-between;
+    padding:calc(env(safe-area-inset-top) + 12px) 14px 10px; pointer-events:none}
+  #top>*{pointer-events:auto}
+  #modes{display:flex; gap:5px; background:var(--panel); border-radius:22px; padding:4px}
+  #modes button{height:36px; padding:0 13px; border:none; border-radius:18px; background:transparent;
+    color:var(--dim); font-size:13px; font-weight:600}
+  #modes button.on{background:var(--accent); color:var(--accent-ink)}
+  #toprt{display:flex; gap:8px}
+
+  #status{position:fixed; top:calc(env(safe-area-inset-top) + 62px); left:0; right:0; z-index:5;
+    text-align:center; pointer-events:none}
+  #status span{display:inline-block; pointer-events:auto; font-size:12px; font-weight:600; color:var(--accent-ink);
+    background:var(--accent); padding:4px 11px; border-radius:12px}
+
+  /* bottom */
+  #bottom{position:fixed; left:0; right:0; bottom:0; z-index:5; padding:10px 10px calc(env(safe-area-inset-bottom) + 10px)}
+  #lenses{display:flex; gap:7px; overflow-x:auto; padding:2px 4px 8px; -webkit-overflow-scrolling:touch}
+  #lenses::-webkit-scrollbar{display:none}
+
+  /* sheets */
+  .sheet{position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--panel);
+    border-top-left-radius:22px; border-top-right-radius:22px; border-top:1px solid var(--line);
+    transform:translateY(102%); transition:transform .28s cubic-bezier(.3,.8,.3,1); max-height:86%; display:flex; flex-direction:column;
+    padding-bottom:env(safe-area-inset-bottom)}
+  .sheet.up{transform:translateY(0)}
+  .grab{width:38px; height:4px; border-radius:2px; background:var(--line); margin:8px auto 2px}
+  .sheet-h{display:flex; align-items:flex-start; gap:10px; padding:6px 16px 4px}
+  .sheet-body{overflow:auto; padding:0 16px 16px}
+  .tale{font-size:14.5px; line-height:1.64; color:#DCE2F0; white-space:pre-wrap}
+  :root.night .tale{color:#F2C9C4}
+  .verified{font-size:11px; color:#8FE3B0; margin-top:3px}
+  :root.night .verified{color:#E39B93}
+  .row{display:flex; gap:10px; align-items:center}
+  .star-meta{font-size:12px; color:var(--dim); margin-top:2px}
+  h2{font-size:18px; margin:0}
+  h3{font-size:15px; margin:0}
+  .play{width:44px;height:44px;border-radius:22px;border:none;background:var(--accent);color:var(--accent-ink);display:flex;align-items:center;justify-content:center}
+  .tog{display:flex; align-items:center; gap:12px; background:var(--panel2); border:1px solid var(--line);
+    border-radius:14px; padding:11px 13px; margin-bottom:8px}
+  .box{width:24px;height:24px;border-radius:7px;flex:none;border:2px solid #3A445F;display:flex;align-items:center;justify-content:center}
+  .box.on{background:var(--accent);border:none}
+  .pre{font-size:11px;color:var(--dim)}
+  .overlay{position:fixed; inset:0; z-index:40; background:var(--ground); display:flex; flex-direction:column;
+    padding:calc(env(safe-area-inset-top) + 20px) 18px env(safe-area-inset-bottom)}
+  .hidden{display:none !important}
+  .mut{color:var(--dim); font-size:13px; line-height:1.5}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<video id="cam" playsinline muted></video>
+<canvas id="sky"></canvas>
+
+<!-- ALIGN / LAUNCH GATE -->
+<div id="align" class="overlay">
+  <div class="row" style="justify-content:space-between">
+    <div><h2>Align to Polaris</h2><div class="mut">One tap pins the compass for this session</div></div>
+    <button class="btn icon" id="alignClose" aria-label="Skip">✕</button>
+  </div>
+  <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:16px">
+    <div class="mut" id="permNote">To point at the sky, this needs motion &amp; (optionally) camera access.</div>
+    <button class="btn accent" id="enableSensors" style="height:52px; justify-content:center; font-size:16px">Enable motion sensors</button>
+    <button class="btn" id="enableCam" style="height:48px; justify-content:center">Turn on camera backdrop (optional)</button>
+    <div style="background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px">
+      <div class="mut">Find Polaris: follow the two <b style="color:var(--text)">Pointer</b> stars (Dubhe → Merak) off the Big Dipper's bowl about five times their gap. It sits due north, about <b id="latAlt" style="color:var(--text)">44°</b> up.</div>
+    </div>
+    <div class="mut" id="liveAim" style="text-align:center">Point at Polaris, then tap Align.</div>
+    <button class="btn accent" id="doAlign" style="height:54px; justify-content:center; font-size:16px">Align here</button>
+    <button class="btn" id="skipAlign" style="height:46px; justify-content:center">Skip — I'll use Sky Map</button>
+    <div class="mut" style="text-align:center; font-size:11px">Polaris is due north, <span id="latAlt2">44°</span> up from your location — aligning fixes heading and tilt at once.</div>
+  </div>
+</div>
+
+<!-- TOP -->
+<div id="top">
+  <div id="modes">
+    <button data-mode="live" class="on">Live</button>
+    <button data-mode="map">Map</button>
+    <button data-mode="tour">Tour</button>
+  </div>
+  <div id="toprt">
+    <button class="btn icon" id="btnAlign" aria-label="Align to Polaris">✛</button>
+    <button class="btn icon" id="btnTrad" aria-label="Traditions">☰</button>
+  </div>
+</div>
+<div id="status"><span id="statusTxt">Point &amp; Lock</span></div>
+
+<!-- BOTTOM -->
+<div id="bottom">
+  <div id="lenses"></div>
+</div>
+
+<!-- TALE SHEET -->
+<div class="sheet" id="taleSheet">
+  <div class="grab"></div>
+  <div class="sheet-h">
+    <div style="flex:1">
+      <h2 id="taleCon">Ursa Major</h2>
+      <div class="star-meta" id="taleSub">The Great Bear</div>
+    </div>
+    <button class="btn icon" id="taleClose" aria-label="Close">✕</button>
+  </div>
+  <div style="padding:4px 16px 0; display:flex; gap:7px; overflow-x:auto" id="taleTrads"></div>
+  <div class="sheet-body">
+    <div class="row" style="margin:10px 0 6px">
+      <button class="play" id="talePlay" aria-label="Listen">▶</button>
+      <div style="flex:1">
+        <h3 id="taleTitle">The Celestial Bear and the Hunters</h3>
+        <div class="verified" id="taleStatus">● Verified · well-documented</div>
+      </div>
+      <button class="chip" id="taleRate">1.0×</button>
+    </div>
+    <div class="tale" id="taleText"></div>
+    <div id="nameLayer" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<!-- TRADITIONS SHEET -->
+<div class="sheet" id="tradSheet">
+  <div class="grab"></div>
+  <div class="sheet-h">
+    <div style="flex:1"><h2>Traditions</h2><div class="star-meta">Tick which lenses to show · <span id="tradCount"></span></div></div>
+    <button class="btn icon" id="tradClose" aria-label="Close">✕</button>
+  </div>
+  <div style="padding:2px 16px 8px; display:flex; gap:7px; flex-wrap:wrap" id="tradPresets"></div>
+  <div class="sheet-body" id="tradList"></div>
+  <div style="padding:10px 16px; border-top:1px solid var(--line)">
+    <label class="row" style="justify-content:space-between">
+      <span>Night mode (red)</span>
+      <input type="checkbox" id="nightToggle">
+    </label>
+  </div>
+</div>
+
+<script src="skydata.js"></script>
+<script>
+/* ---------- Ursa Major multicultural overlay (verified dataset) ---------- */
+const HIP={Dubhe:54061,Merak:53910,Phecda:58001,Megrez:59774,Alioth:62956,Mizar:65378,Alcor:65477,Alkaid:67301,Arcturus:69673};
+const UMA_FIG={
+  mikmaq:{ lines:[[HIP.Dubhe,HIP.Merak,HIP.Phecda,HIP.Megrez,HIP.Dubhe],
+                  [HIP.Alioth,HIP.Mizar,HIP.Alkaid,HIP.Arcturus]],
+           label:{hip:HIP.Phecda,text:"The Bear"} }
+};
+const UMA_NAMES={ // per-tradition star names on the Dipper
+  arabic:{[HIP.Dubhe]:"Dubhe — ‘back of the bear’",[HIP.Merak]:"Merak — ‘the loins’",[HIP.Phecda]:"Phecda — ‘the thigh’",[HIP.Megrez]:"Megrez — ‘root of the tail’",[HIP.Alioth]:"Alioth — ‘the fat tail’",[HIP.Mizar]:"Mizar — ‘the waistband’",[HIP.Alkaid]:"Alkaid — ‘leader of the mourners’"},
+  chinese:{[HIP.Dubhe]:"Tiānshū 天枢 — Celestial Pivot",[HIP.Merak]:"Tiānxuán 天璇",[HIP.Phecda]:"Tiānjī 天玑",[HIP.Megrez]:"Tiānquán 天权",[HIP.Alioth]:"Yùhéng 玉衡",[HIP.Mizar]:"Kāiyáng 开阳",[HIP.Alkaid]:"Yáoguāng 瑶光"},
+  hindu:{[HIP.Dubhe]:"Kratu",[HIP.Merak]:"Pulaha",[HIP.Phecda]:"Pulastya",[HIP.Megrez]:"Atri",[HIP.Alioth]:"Angiras",[HIP.Mizar]:"Vasishtha (+ Arundhati = Alcor)",[HIP.Alkaid]:"Marichi"}
+};
+const UMA_TALES={
+ greek:{title:"Callisto and the Great Bear",status:"well-documented",text:
+"Callisto, a nymph sworn to Artemis's band of hunters, caught the eye of Zeus. When she bore his son, Arcas, Hera's jealousy fell on her and she was turned into a bear, condemned to roam the forests she had once hunted. Years later Arcas, grown into a hunter himself, came upon the bear and raised his spear — not knowing it was his mother. Zeus swept them both into the sky before the blow could land: Callisto as the Great Bear, Arcas at her heels as the Little Bear. Hera, cheated of her revenge, persuaded the sea gods never to let the two bears bathe in their waters — which is why, from the north, they wheel endlessly around the pole and never sink to rest beneath the sea."},
+ mikmaq:{title:"The Celestial Bear and the Hunters",status:"well-documented",text:
+"To many nations of northeastern North America — the Haudenosaunee, the Mi'kmaq, and their neighbours — the four stars of the bowl are not a bear's tail but the whole bear, and the stars of the handle are the hunters who chase her around the year.\n\nIn spring the great bear wakes and climbs from her den below the northern horizon, and the hunt begins. Behind her strings a line of birds, each one a hunter: Robin leads, then Chickadee — who carries the little cooking pot, the faint star we call Alcor, tucked close against Mizar — then Moose Bird, the grey jay, and behind them Pigeon, Blue Jay, Owl, and the small Saw-whet owl, the farthest and slowest. All summer the birds pursue her across the top of the sky.\n\nAs autumn comes the chase turns. One by one the hindmost hunters lose the trail and sink below the horizon, until only the three nearest birds remain. Then Robin overtakes her. The bear rears onto her hind legs to fight, and Robin looses an arrow. As she falls, her blood showers down: it stains Robin's breast red for all time, and falls on the forests below to turn the leaves scarlet and gold. Chickadee arrives with the pot, and the hunters feast.\n\nBut the bear's life-spirit stays in the sky. All winter she lies on her back, low in the north — and when spring returns she rises from her den once more, and the hunt begins again.\n\n(Not every nation here sees a bear. To the Anishinaabe these same stars are Ojiig, the Fisher, whose own death likewise paints the autumn woods.)"},
+ arabic:{title:"Banāt Naʿsh — the Daughters of the Bier",status:"well-documented",text:
+"Medieval Arab astronomers carried two readings at once. One, through Ptolemy, was the Great Bear — al-Dubb al-Akbar — surviving in names we still use: Dubhe is literally ‘the back of the great bear.’ The older, native Arabian image was starker. The four stars of the bowl are a naʿsh, a funeral bier; the three stars trailing the handle are banāt naʿsh, the daughters — mourners walking behind the coffin around the pole. The lead mourner endures on the handle's tip, Alkaid, ‘the leader of the daughters of the bier.’ So this one shape is at once a bear and a funeral — the brightest everyday pattern in the north doubling as an image of grief that never sets. It also seeds the whole star-name layer: nearly every proper star name is Arabic, and here they map the bear's body — the thigh, the loins, the root of the tail."},
+ chinese:{title:"Běidǒu — the Northern Dipper",status:"well-documented",text:
+"In Chinese astronomy the seven stars are Běidǒu, the Northern Dipper, among the most important in the whole sky — part of the Ziwei, the Purple Forbidden Enclosure, the celestial court surrounding the pole. The Dipper is the chariot of the celestial emperor, rolling out from the centre of heaven to govern the seasons and all under heaven. As its handle swings around the pole through the year it works like the hand of an immense clock: the direction it points at nightfall was read to fix the time of year. Each star held its own office — Dubhe is Tiānshū, the Celestial Pivot. In later Daoist tradition the Dipper became a focus of worship, bound up with fate, longevity and the right ordering of the state."},
+ hindu:{title:"Saptarishi — the Seven Sages",status:"well-documented",text:
+"In Indian astronomy the seven stars are the Saptarishi — the seven great rishis, sages of the Vedas and mind-born sons of Brahma — set turning in the northern sky: Kratu, Pulaha, Pulastya, Atri, Angiras, Vasishtha and Marichi. The pattern hides a smaller marvel. The sage Vasishtha is the star Mizar, and faint beside him is his devoted wife, Arundhati — the star Alcor. So the famous naked-eye double is read as a married couple, inseparable in the sky; pointing out Arundhati beside Vasishtha became part of the Hindu wedding ceremony, an emblem of a faithful union. The slow wheeling of the sages measured cosmic time itself."},
+ hungarian:{title:"Göncöl's Wagon",status:"well-documented",text:
+"Across much of Europe the Dipper is read not as a bear but as a wagon, and in Hungarian it is Göncöl's Wagon — Göncölszekér. It is named for Göncöl, a táltos, a shaman of old Magyar belief, who drove the wagon across the heavens carrying a medicine said to cure any illness. When the wagon is finally mended and whole, the old saying goes, the world will end. It is one of the gentler images of this star pattern — not a hunt or a funeral but a healer's cart crossing the night."}
+};
+const TRADITIONS=[
+ {id:"greek",name:"Greek",sub:"Callisto & the Great Bear",group:"Spine",on:true},
+ {id:"arabic",name:"Arabic",sub:"Daughters of the Bier · star names",group:"Spine",on:true},
+ {id:"chinese",name:"Chinese",sub:"Běidǒu · the emperor's chariot",group:"Spine",on:true},
+ {id:"hindu",name:"Hindu",sub:"Saptarishi · the Seven Sages",group:"Spine",on:true},
+ {id:"mikmaq",name:"Mi'kmaq",sub:"The Celestial Bear hunt",group:"North America",on:true},
+ {id:"hungarian",name:"Hungarian",sub:"Göncöl's Wagon",group:"European",on:true}
+];
+const LENS_WITH_FIGURE={greek:true,mikmaq:true}; // others reuse Greek lines + own names/tale for now
+
+/* ---------- catalog indexing ---------- */
+const SD=window.SKYDATA;
+const byHip={}; SD.stars.forEach(s=>byHip[s[0]]=s); // [hip,ra,dec,mag,name]
+const UMA_HIPS=new Set(Object.values(HIP));
+
+/* ---------- astronomy ---------- */
+const D2R=Math.PI/180, R2D=180/Math.PI;
+function julian(d){return d.getTime()/86400000 + 2440587.5;}
+function lstDeg(date,lonDeg){
+  const JD=julian(date), T=(JD-2451545.0)/36525.0;
+  let gmst=280.46061837 + 360.98564736629*(JD-2451545.0) + 0.000387933*T*T - T*T*T/38710000.0;
+  gmst=((gmst%360)+360)%360;
+  return ((gmst+lonDeg)%360+360)%360;
+}
+// returns {az: from North eastward deg, alt: deg}
+function altaz(raDeg,decDeg,latDeg,lstD){
+  const H=((lstD-raDeg)*D2R), dec=decDeg*D2R, lat=latDeg*D2R;
+  const sinAlt=Math.sin(dec)*Math.sin(lat)+Math.cos(dec)*Math.cos(lat)*Math.cos(H);
+  const alt=Math.asin(Math.max(-1,Math.min(1,sinAlt)));
+  const cosAlt=Math.cos(alt);
+  let az;
+  if(cosAlt<1e-6){az=0;}
+  else{
+    const sinAz=-Math.cos(dec)*Math.sin(H)/cosAlt;
+    const cosAz=(Math.sin(dec)-Math.sin(lat)*sinAlt)/(Math.cos(lat)*cosAlt);
+    az=Math.atan2(sinAz,cosAz)*R2D; az=(az+360)%360;
+  }
+  return {az, alt:alt*R2D};
+}
+function dirVec(azDeg,altDeg){ // world (E,N,U)
+  const a=azDeg*D2R, e=altDeg*D2R, c=Math.cos(e);
+  return [c*Math.sin(a), c*Math.cos(a), Math.sin(e)];
+}
+
+/* ---------- observer ---------- */
+let OBS={lat:43.65,lon:-79.38}; // Toronto default
+try{ navigator.geolocation && navigator.geolocation.getCurrentPosition(
+  p=>{OBS.lat=p.coords.latitude;OBS.lon=p.coords.longitude; document.getElementById('latAlt').textContent=Math.round(OBS.lat)+'°'; document.getElementById('latAlt2').textContent=Math.round(OBS.lat)+'°';},
+  ()=>{}, {timeout:8000}); }catch(e){}
+
+/* ---------- orientation ---------- */
+let rawAlpha=0,rawBeta=90,rawGamma=0, haveOrient=false;
+let azOffset=0, altOffset=0, aligned=false; // set by Polaris align
+let gotAbs=false, compassOff=null;
+function angDiff(a,b){return ((a-b+540)%360+360)%360-180;}
+function onOrient(e){
+  if(e.alpha==null && e.webkitCompassHeading==null) return;
+  const ios=(e.webkitCompassHeading!=null);
+  if(!ios){ // Android fires a relative and an absolute stream; use only the absolute one once it exists
+    const abs=(e.type==='deviceorientationabsolute'||e.absolute===true);
+    if(abs) gotAbs=true; else if(gotAbs) return;
+  }
+  rawBeta=e.beta==null?90:e.beta; rawGamma=e.gamma||0;
+  if(ios && e.alpha!=null){
+    // iOS: alpha is smooth but relative; the compass heading is only trustworthy with the phone held
+    // fairly flat. Learn the offset then, and keep using the gyro-stable alpha when aimed at the sky.
+    const target=(360-e.webkitCompassHeading)-e.alpha;
+    const flat=Math.abs(rawBeta)<65 && Math.abs(rawGamma)<50;
+    if(compassOff==null){ if(flat) compassOff=target; }
+    else if(flat && !aligned && !(e.webkitCompassAccuracy<0)) compassOff+=angDiff(target,compassOff)*0.05;
+    rawAlpha=e.alpha+(compassOff==null?target:compassOff);
+  } else if(ios){ rawAlpha=360-e.webkitCompassHeading; }
+  else rawAlpha=e.alpha||0;
+  haveOrient=true;
+}
+function screenAngle(){ const o=(screen.orientation&&screen.orientation.angle)||window.orientation||0; return o*D2R; }
+function rotZ(v,deg){const t=deg*D2R,c=Math.cos(t),s=Math.sin(t);return [v[0]*c+v[1]*s, -v[0]*s+v[1]*c, v[2]];}
+function vecAzAlt(v){let az=Math.atan2(v[0],v[1])*R2D; if(az<0)az+=360; return {az,alt:Math.asin(Math.max(-1,Math.min(1,v[2])))*R2D};}
+// Full camera frame from the device attitude (includes roll, so the sky stays put when the phone twists).
+// R = Rz(a)Rx(b)Ry(g): screen-right = col 1, screen-top = col 2, back camera = -col 3. World = (E,N,U).
+function liveBasis(noOffsets){
+  const a=rawAlpha*D2R, b=rawBeta*D2R, g=rawGamma*D2R;
+  const cA=Math.cos(a),sA=Math.sin(a),cB=Math.cos(b),sB=Math.sin(b),cG=Math.cos(g),sG=Math.sin(g);
+  let r=[cA*cG - sA*sB*sG, sA*cG + cA*sB*sG, -cB*sG];
+  let u=[-cB*sA, cA*cB, sB];
+  let f=[-(cA*sG + cG*sA*sB), -(sA*sG - cA*cG*sB), -(cB*cG)];
+  const th=screenAngle();
+  if(th){const c=Math.cos(th),s=Math.sin(th);
+    const r2=[r[0]*c-u[0]*s, r[1]*c-u[1]*s, r[2]*c-u[2]*s], u2=[u[0]*c+r[0]*s, u[1]*c+r[1]*s, u[2]*c+r[2]*s]; r=r2; u=u2;}
+  if(!noOffsets){
+    r=rotZ(r,azOffset); u=rotZ(u,azOffset); f=rotZ(f,azOffset);
+    if(altOffset){const t=altOffset*D2R,c=Math.cos(t),s=Math.sin(t);
+      const f2=[f[0]*c+u[0]*s, f[1]*c+u[1]*s, f[2]*c+u[2]*s], u2=[u[0]*c-f[0]*s, u[1]*c-f[1]*s, u[2]*c-f[2]*s]; f=f2; u=u2;}
+  }
+  return {f,r,u};
+}
+// light smoothing of sensor jitter
+let smB=null;
+function norm(v){const l=Math.hypot(v[0],v[1],v[2])||1;return [v[0]/l,v[1]/l,v[2]/l];}
+function smoothBasis(B){
+  if(!smB){smB=B;return B;}
+  const k=0.3, mix=(p,q)=>[p[0]+(q[0]-p[0])*k,p[1]+(q[1]-p[1])*k,p[2]+(q[2]-p[2])*k];
+  const f=norm(mix(smB.f,B.f)); let u=mix(smB.u,B.u);
+  const d=u[0]*f[0]+u[1]*f[1]+u[2]*f[2]; u=norm([u[0]-d*f[0],u[1]-d*f[1],u[2]-d*f[2]]);
+  const r=[f[1]*u[2]-f[2]*u[1], f[2]*u[0]-f[0]*u[2], f[0]*u[1]-f[1]*u[0]];
+  smB={f,r,u}; return smB;
+}
+
+/* ---------- view state ---------- */
+let MODE="live"; // live | map | tour
+let locked=false, lockedView=null; // frozen camera frame when Point&Lock
+let mapView={az:0,alt:45};
+let activeLens="mikmaq";
+const FOV=68*D2R;
+let W=0,Hh=0,DPR=1;
+const cv=document.getElementById('sky'), ctx=cv.getContext('2d');
+function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.width=innerWidth*DPR; Hh=cv.height=innerHeight*DPR; cv.style.width=innerWidth+'px'; cv.style.height=innerHeight+'px';}
+addEventListener('resize',resize); resize();
+
+function viewBasis(){
+  if(MODE==="live" && haveOrient){ if(locked && lockedView) return lockedView; return smoothBasis(liveBasis()); }
+  return basis(mapView);
+}
+// camera basis from center dir
+function basis(c){
+  const f=dirVec(c.az,c.alt);
+  let up=[0,0,1];
+  let r=[f[1]*up[2]-f[2]*up[1], f[2]*up[0]-f[0]*up[2], f[0]*up[1]-f[1]*up[0]];
+  let rl=Math.hypot(r[0],r[1],r[2]); if(rl<1e-4){r=[1,0,0];rl=1;} r=r.map(x=>x/rl);
+  let u=[r[1]*f[2]-r[2]*f[1], r[2]*f[0]-r[0]*f[2], r[0]*f[1]-r[1]*f[0]];
+  return {f,r,u};
+}
+function project(vec,B,focal){
+  const z=vec[0]*B.f[0]+vec[1]*B.f[1]+vec[2]*B.f[2]; if(z<=0.05) return null;
+  const x=vec[0]*B.r[0]+vec[1]*B.r[1]+vec[2]*B.r[2];
+  const y=vec[0]*B.u[0]+vec[1]*B.u[1]+vec[2]*B.u[2];
+  return {x:W/2 + (x/z)*focal, y:Hh/2 - (y/z)*focal, z};
+}
+
+/* precompute star screen positions each frame */
+let starScreen={}; // hip -> {x,y,mag}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+const CARD8=["N","NE","E","SE","S","SW","W","NW"];
+const LENS_LABEL={arabic:"Banāt Naʿsh",chinese:"Běidǒu 北斗",hindu:"Saptarishi",hungarian:"Göncölszekér"};
+let frameN=0, autoStatus=true;
+function draw(){
+  requestAnimationFrame(draw);
+  const lst=lstDeg(new Date(),OBS.lon), B=viewBasis(), focal=(Hh/2)/Math.tan(FOV/2);
+  ctx.clearRect(0,0,W,Hh);
+  starScreen={};
+  const starCol=css('--star'), accent=css('--accent'), ghost=css('--ghost'), dim=css('--dim');
+  const FONT='-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+  // horizon + compass points
+  ctx.strokeStyle=ghost; ctx.globalAlpha=.6; ctx.lineWidth=1.2*DPR; ctx.beginPath(); let pen=false;
+  for(let a=0;a<=360;a+=3){const p=project(dirVec(a,0),B,focal);
+    if(p&&p.x>-W&&p.x<2*W&&p.y>-Hh&&p.y<2*Hh){ if(pen)ctx.lineTo(p.x,p.y); else ctx.moveTo(p.x,p.y); pen=true; } else pen=false;}
+  ctx.stroke();
+  ctx.fillStyle=ghost; ctx.font=`700 ${12*DPR}px ${FONT}`; ctx.textAlign='center';
+  CARD8.forEach((t,i)=>{const p=project(dirVec(i*45,0),B,focal); if(p) ctx.fillText(t,p.x,p.y+16*DPR);});
+  ctx.textAlign='left'; ctx.globalAlpha=1;
+  // stars
+  for(const s of SD.stars){
+    const aa=altaz(s[1],s[2],OBS.lat,lst);
+    if(aa.alt< -2) continue;
+    const p=project(dirVec(aa.az,aa.alt),B,focal); if(!p) continue;
+    if(p.x<-20||p.x>W+20||p.y<-20||p.y>Hh+20) continue;
+    starScreen[s[0]]={x:p.x,y:p.y,mag:s[3],name:s[4],alt:aa.alt};
+    const r=Math.max(.6,(3.3-0.46*s[3]))*DPR;
+    ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7); ctx.fillStyle=starCol;
+    ctx.globalAlpha=Math.max(.35,Math.min(1,1.1-0.12*s[3])); ctx.fill(); ctx.globalAlpha=1;
+  }
+  // figure lines
+  const drawSeg=(hips,col,wd)=>{ctx.strokeStyle=col;ctx.lineWidth=wd*DPR;
+    for(let i=0;i<hips.length-1;i++){const A=starScreen[hips[i]],Bp=starScreen[hips[i+1]];
+      if(A&&Bp){ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(Bp.x,Bp.y);ctx.stroke();}}};
+  const mik=(activeLens==="mikmaq");
+  for(const c2 of SD.cons){
+    const isUMa=(c2.iau==="UMa");
+    for(const seg of c2.lines){const hips=seg.filter(n=>typeof n==="number");
+      if(mik) drawSeg(hips, ghost, 1); // Greek sky as faint ghost lines behind the Mi'kmaq bear
+      else drawSeg(hips, accent, (seg[0]==="thin"?1:(isUMa?2.3:1.6)));}
+  }
+  if(mik){
+    for(const seg of UMA_FIG.mikmaq.lines) drawSeg(seg, accent, 2.3);
+    const lp=starScreen[UMA_FIG.mikmaq.label.hip]; if(lp){ctx.fillStyle=accent;ctx.font=`600 ${13*DPR}px ${FONT}`;ctx.fillText(UMA_FIG.mikmaq.label.text, lp.x+8*DPR, lp.y-8*DPR);}
+  } else if(LENS_LABEL[activeLens]){
+    const lp=starScreen[HIP.Megrez]; if(lp){ctx.fillStyle=accent;ctx.font=`600 ${13*DPR}px ${FONT}`;ctx.fillText(LENS_LABEL[activeLens], lp.x+8*DPR, lp.y-10*DPR);}
+  }
+  // labels: named bright stars
+  ctx.fillStyle=dim; ctx.font=`500 ${11*DPR}px ${FONT}`;
+  for(const hip in starScreen){const s=starScreen[hip]; if(s.name && s.mag<2.3){ctx.fillText(s.name,s.x+6*DPR,s.y-6*DPR);}}
+  // constellation name near its brightest on-screen star (every lens)
+  ctx.font=`600 ${12*DPR}px ${FONT}`;
+  for(const c2 of SD.cons){
+    if(mik && c2.iau==="UMa") continue;
+    let best=null;for(const seg of c2.lines)for(const n of seg){if(typeof n==="number"&&starScreen[n]&&(!best||starScreen[n].mag<best.mag))best=starScreen[n];}
+    if(best){ctx.fillStyle=mik?ghost:accent;ctx.globalAlpha=.9;ctx.fillText(c2.name,best.x+6*DPR,best.y+14*DPR);ctx.globalAlpha=1;}
+  }
+  // live read-out of where the view is aimed
+  if((frameN++%8)===0){
+    const d=vecAzAlt(B.f), where=CARD8[Math.round(d.az/45)%8]+" · "+Math.round(d.alt)+"° up";
+    if(autoStatus){
+      if(MODE==="map") setStatus("Map · "+where+" · drag to look around");
+      else if(MODE==="live" && haveOrient) setStatus(locked?"Locked · "+where+" · tap here to release":"Live · "+where+" · tap here to lock");
+      else if(MODE==="live") setStatus("No motion data · drag to look around");
+    }
+    const la=document.getElementById('liveAim');
+    if(la && haveOrient && !document.getElementById('align').classList.contains('hidden')) la.textContent="Aimed "+where+" — point at Polaris, then tap Align.";
+  }
+}
+function conLines(iau){const c=SD.cons.find(x=>x.iau===iau);return c?c.lines:[];}
+requestAnimationFrame(draw);
+
+/* ---------- pointer: drag to look (map / tour, or live without sensors), tap to identify ---------- */
+let drag=null, dragMoved=false;
+function canDrag(){return !(MODE==="live" && haveOrient);}
+cv.addEventListener('pointerdown',e=>{ dragMoved=false; if(!canDrag())return; drag={x:e.clientX,y:e.clientY,az:mapView.az,alt:mapView.alt}; });
+addEventListener('pointermove',e=>{ if(!drag)return; const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+  if(Math.hypot(dx,dy)>8) dragMoved=true;
+  const k=(FOV*R2D)/innerHeight; // sky follows the finger 1:1
+  mapView.alt=Math.max(-5,Math.min(89,drag.alt + dy*k));
+  mapView.az=((drag.az - dx*k/Math.max(.35,Math.cos(mapView.alt*D2R)))%360+360)%360; });
+addEventListener('pointerup',()=>drag=null);
+addEventListener('pointercancel',()=>drag=null);
+cv.addEventListener('click',ev=>{
+  if(dragMoved){dragMoved=false;return;} // end of a drag is not a tap
+  const x=ev.clientX*DPR,y=ev.clientY*DPR; let best=null,bd=1e9;
+  for(const hip in starScreen){const s=starScreen[hip];const d=Math.hypot(s.x-x,s.y-y);if(d<bd){bd=d;best=+hip;}}
+  if(best!=null && bd<44*DPR){ openTaleForHip(best); }
+});
+function constellationOfHip(hip){
+  if(UMA_HIPS.has(hip)) return "UMa";
+  for(const c of SD.cons) for(const seg of c.lines) for(const n of seg) if(n===hip) return c.iau;
+  return null;
+}
+
+/* ---------- UI wiring ---------- */
+const $=id=>document.getElementById(id);
+function setStatus(t){const el=$('statusTxt'); if(el.textContent!==t) el.textContent=t;}
+function setMode(m){
+  document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on',x.dataset.mode===m));
+  if(MODE==="live" && haveOrient && m!=="live"){ const d=vecAzAlt(viewBasis().f); mapView.az=d.az; mapView.alt=Math.max(-5,Math.min(89,d.alt)); } // keep looking the same way
+  MODE=m; locked=false; lockedView=null; smB=null; autoStatus=(m!=="tour");
+  if(m==="tour") startTour();
+}
+document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{
+  if(b.dataset.mode==="live" && !haveOrient){ $('align').classList.remove('hidden'); return; } // needs sensors first
+  setMode(b.dataset.mode);
+});
+// point & lock: tap the status pill in Live
+$('statusTxt').onclick=()=>{ if(MODE!=="live"||!haveOrient)return; locked=!locked; lockedView=locked?smoothBasis(liveBasis()):null; smB=null; };
+
+// lenses
+function renderLenses(){const el=$('lenses');el.innerHTML='';
+  TRADITIONS.filter(t=>t.on).forEach(t=>{const b=document.createElement('button');b.className='chip'+(t.id===activeLens?' on':'');b.textContent=t.name;
+    b.onclick=()=>{activeLens=t.id;renderLenses();};el.appendChild(b);});
+}
+renderLenses();
+
+// align overlay
+const FRAMED=(()=>{try{return window.self!==window.top;}catch(e){return true;}})();
+const BLOCKED_MSG="Motion sensors aren't reachable here. Claude's artifact viewer runs pages in a sandbox that blocks motion, camera and location, so Live pointing can't run inside it. Sky Map and Tour work fully: drag the sky to look around.";
+let sensorsTried=false;
+async function enableSensors(){
+  const note=$('permNote'); sensorsTried=true;
+  try{
+    if(typeof DeviceOrientationEvent==='undefined'){ note.textContent=BLOCKED_MSG; return false; }
+    if(DeviceOrientationEvent.requestPermission){
+      const r=await DeviceOrientationEvent.requestPermission(); if(r!=='granted'){ note.textContent=BLOCKED_MSG; return false; }
+    }
+    window.addEventListener('deviceorientation',onOrient,true);
+    window.addEventListener('deviceorientationabsolute',onOrient,true);
+    note.textContent='Checking for motion data…';
+    await new Promise(r=>setTimeout(r,1500));
+    if(!haveOrient){ note.textContent=BLOCKED_MSG; return false; }
+    note.textContent='Sensors on. Hold the phone fairly flat for a second (sets the compass), then point its back at Polaris.';
+    $('enableSensors').textContent='Motion sensors on ✓';
+    return true;
+  }catch(err){ note.textContent=BLOCKED_MSG; return false; }
+}
+$('enableSensors').onclick=enableSensors;
+$('enableCam').onclick=async()=>{
+  try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=$('cam'); v.srcObject=st; await v.play(); v.classList.add('on'); $('enableCam').textContent='Camera backdrop on ✓';
+  }catch(e){$('enableCam').textContent='Camera unavailable here';}
+};
+function doAlign(){
+  if(!haveOrient){ $('liveAim').textContent=sensorsTried?'No motion data, so there is nothing to align — use Sky Map.':'Tap "Enable motion sensors" first.'; return; }
+  // Where the phone thinks it is aimed (no corrections) vs. where Polaris really is right now.
+  const d=vecAzAlt(liveBasis(true).f), P=byHip[11767];
+  const t=P?altaz(P[1],P[2],OBS.lat,lstDeg(new Date(),OBS.lon)):{az:0,alt:OBS.lat};
+  azOffset=angDiff(t.az,d.az); altOffset=t.alt-d.alt; aligned=true; smB=null;
+  $('align').classList.add('hidden'); setMode("live");
+}
+$('doAlign').onclick=doAlign;
+$('alignClose').onclick=()=>{$('align').classList.add('hidden'); if(haveOrient) setMode("live"); else setMode("map");};
+$('skipAlign').onclick=()=>{$('align').classList.add('hidden'); setMode("map");};
+$('btnAlign').onclick=()=>{$('align').classList.remove('hidden');};
+$('latAlt').textContent=Math.round(OBS.lat)+'°'; $('latAlt2').textContent=Math.round(OBS.lat)+'°';
+
+/* ---------- tale sheet ---------- */
+let curCon="UMa", speaking=false, rate=1.0;
+function openTaleForHip(hip){ const iau=constellationOfHip(hip); openTale(iau||"UMa", hip); }
+function openTale(iau,hip){
+  curCon=iau;
+  const sheet=$('taleSheet');
+  if(iau==="UMa"){
+    $('taleCon').textContent="Ursa Major"; $('taleSub').textContent="The Great Bear · circumpolar from here";
+    renderTradTabs(); showTradition(activeLens in UMA_TALES?activeLens:"greek", hip);
+  }else{
+    const c=SD.cons.find(x=>x.iau===iau);
+    $('taleCon').textContent=c?c.name:iau; $('taleSub').textContent=(c?c.name:iau)+" ("+iau+")";
+    $('taleTrads').innerHTML='';
+    $('taleTitle').textContent="Greek / IAU figure";
+    $('taleStatus').textContent="● Star names from IAU · fuller tales coming";
+    let extra=""; if(hip&&byHip[hip]&&byHip[hip][4]) extra="Brightest tapped: "+byHip[hip][4]+"\n\n";
+    $('taleText').textContent=extra+"This constellation currently shows its Greek/IAU figure and star names. The deep multicultural tales — like the six built for Ursa Major — are being added constellation by constellation. Tap Ursa Major (the Big Dipper) to see the full experience.";
+    $('nameLayer').innerHTML='';
+  }
+  sheet.classList.add('up');
+}
+function renderTradTabs(){const el=$('taleTrads');el.innerHTML='';
+  TRADITIONS.filter(t=>t.on).forEach(t=>{const b=document.createElement('button');b.className='chip'+(t.id===activeLens?' on':'');b.textContent=t.name;
+    b.onclick=()=>{activeLens=t.id;renderLenses();renderTradTabs();showTradition(t.id);};el.appendChild(b);});
+}
+function showTradition(id,hip){ const tl=UMA_TALES[id]||UMA_TALES.greek;
+  $('taleTitle').textContent=tl.title; $('taleStatus').textContent="● Verified · "+tl.status; $('taleText').textContent=tl.text;
+  // name layer
+  const nm=UMA_NAMES[id]; const nl=$('nameLayer');
+  if(nm){let h='<div class="pre" style="margin-bottom:6px">Star names in this tradition</div>';
+    for(const k in nm){h+='<div class="star-meta">• '+nm[k]+'</div>';} nl.innerHTML=h;}
+  else nl.innerHTML='';
+  if(speaking){stopSpeak();}
+}
+$('taleClose').onclick=()=>$('taleSheet').classList.remove('up');
+
+/* ---------- speech ---------- */
+const canSpeak=('speechSynthesis' in window)&&(typeof SpeechSynthesisUtterance!=='undefined');
+function stopSpeak(){try{speechSynthesis.cancel();}catch(e){} speaking=false;$('talePlay').textContent='▶';}
+$('talePlay').onclick=()=>{
+  if(speaking){stopSpeak();return;}
+  if(!canSpeak){$('taleStatus').textContent='● Read-aloud is not available in this viewer';return;}
+  try{
+  const u=new SpeechSynthesisUtterance($('taleTitle').textContent+'. '+$('taleText').textContent);
+  u.rate=rate; u.onend=()=>{speaking=false;$('talePlay').textContent='▶';};
+  speechSynthesis.cancel(); speechSynthesis.speak(u); speaking=true; $('talePlay').textContent='❚❚';
+  }catch(e){speaking=false;$('taleStatus').textContent='● Read-aloud is not available in this viewer';}
+};
+$('taleRate').onclick=()=>{rate=rate>=1.5?0.8:rate+0.2; $('taleRate').textContent=rate.toFixed(1)+'×'; if(speaking){$('talePlay').click();$('talePlay').click();}};
+
+/* ---------- traditions sheet ---------- */
+function renderTrad(){const list=$('tradList');list.innerHTML='';
+  const groups=[...new Set(TRADITIONS.map(t=>t.group))];
+  groups.forEach(g=>{const h=document.createElement('div');h.className='pre';h.style.margin='10px 4px 6px';h.textContent=g.toUpperCase();list.appendChild(h);
+    TRADITIONS.filter(t=>t.group===g).forEach(t=>{const row=document.createElement('label');row.className='tog';
+      row.innerHTML=`<span class="box ${t.on?'on':''}">${t.on?'✓':''}</span><span style="flex:1"><b>${t.name}</b><br><span class="star-meta">${t.sub}</span></span>`;
+      row.onclick=()=>{t.on=!t.on; if(!TRADITIONS.some(x=>x.on))t.on=true; renderTrad();renderLenses();updCount();};list.appendChild(row);});});
+  const note=document.createElement('div');note.className='mut';note.style.margin='10px 4px';
+  note.textContent='Full figures currently draw for Greek (all 88 constellations) and Mi’kmaq (Ursa Major). Other lenses show their star-names and tales on Ursa Major now; their own figures are being added.';
+  list.appendChild(note);
+}
+function updCount(){$('tradCount').textContent=TRADITIONS.filter(t=>t.on).length+' of '+TRADITIONS.length+' on';}
+const PRESETS={Spine:['greek','arabic','chinese','hindu'],'North America':['mikmaq'],European:['hungarian'],All:TRADITIONS.map(t=>t.id)};
+function renderPresets(){const el=$('tradPresets');el.innerHTML='';Object.keys(PRESETS).forEach(p=>{const b=document.createElement('button');b.className='chip';b.textContent=p;
+  b.onclick=()=>{const set=new Set(PRESETS[p]);TRADITIONS.forEach(t=>t.on=set.has(t.id));if(!TRADITIONS.some(x=>x.on))TRADITIONS[0].on=true;renderTrad();renderLenses();updCount();};el.appendChild(b);});}
+$('btnTrad').onclick=()=>{renderTrad();renderPresets();updCount();$('tradSheet').classList.add('up');};
+$('tradClose').onclick=()=>$('tradSheet').classList.remove('up');
+$('nightToggle').onchange=e=>document.documentElement.classList.toggle('night',e.target.checked);
+
+/* ---------- tour ---------- */
+function startTour(){ // find a bright, well-placed constellation now; point map there and narrate
+  const lst=lstDeg(new Date(),OBS.lon);
+  const picks=["UMa","Cas","Cyg","Lyr","Boo","Ori","Aur","Peg"];
+  let chosen=null;
+  for(const iau of picks){const c=SD.cons.find(x=>x.iau===iau);if(!c)continue;
+    let hip=null;for(const seg of c.lines)for(const n of seg)if(typeof n==="number"&&byHip[n]){if(!hip||byHip[n][3]<byHip[hip][3])hip=n;}
+    if(!hip)continue;const aa=altaz(byHip[hip][1],byHip[hip][2],OBS.lat,lst);
+    if(aa.alt>20){chosen={iau,az:aa.az,alt:aa.alt,name:c.name};break;}}
+  if(!chosen){setStatus("Nothing high up right now — try Map");return;}
+  autoStatus=false;
+  mapView.az=chosen.az; mapView.alt=chosen.alt;
+  const dir=chosen.az<45||chosen.az>315?"north":chosen.az<135?"east":chosen.az<225?"south":"west";
+  setStatus(`Tour: face ${dir}, ~${Math.round(chosen.alt)}° up`);
+  openTale(chosen.iau);
+}
+
+// launch: inside a sandboxed viewer (no sensors) go straight to Sky Map; on a normal https page, open on the Polaris gate
+if(FRAMED){ $('permNote').textContent=BLOCKED_MSG; $('align').classList.add('hidden'); setMode("map"); }
+else setStatus("Enable sensors to begin");
+</script>
+</body>
+</html>
