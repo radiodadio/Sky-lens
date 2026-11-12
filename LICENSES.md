@@ -40,3 +40,11 @@ Positions use the low-precision method published by Paul Schlyter ("Computing pl
 ## Tales (`tales.js`)
 
 The tale texts are original, written for this app. Facts were checked against the Stellarium sky-culture descriptions and figure data listed above, plus web sources consulted in November 2026: the IAU star-name etymology wiki (Caph, Vega, Wangliang); R. H. Allen's *Star Names* (Cassiopeia); StarDate (Arabic star names, Osiris); Wikipedia's "Inuit astronomy" (drawing on John MacDonald, *The Arctic Sky*) and Inuit Heritage Greenland; Native Skywatchers' Diné booklet and the Heard Museum's Diné labels; Malleefowl Victoria, Museums Victoria and the University of Melbourne on the Boorong sky; *Magyar Néprajz* (mek.oszk.hu) and the Prince Csaba chronicle tradition; World History Encyclopedia on Matariki. Greek, Egyptian, Chinese, Indian, Maya and Aztec tales follow standard reference accounts; where tellings differ, the tale says so.
+
+## Constellation artwork (`art/`, `art.js`)
+
+Drawings of the 85 classical figures by Johan Meuris, from Stellarium's "Modern" sky culture, under the Free Art License 1.3 (https://artlibre.org/licence/lal/en/). Changes: converted from grey-on-black to transparent line art, reduced to 320 px and tinted in the app. The modified images remain under the Free Art License.
+
+## Hand-plotted figure sets (`handfigs.js`)
+
+Arabic, Hungarian, Anishinaabe/Ojibwe, Lakota, Haudenosaunee, Cherokee, Welsh and Hebrew figures were plotted by hand for Sky Lens from published identifications of which stars each figure uses. They are simplified stand-ins, not reproductions of any published star map. Sources: Danielle Adams, "Two Deserts, One Sky" (onesky.arizona.edu) and BBC Sky at Night Magazine; IAU star-name etymology wiki; Magyar Néprajz and Magyar Néprajzi Lexikon; the Ojibwe Sky Star Map (A. Lee, W. Wilson, C. Gawboy, Native Skywatchers) as described by Sky & Telescope and Space.com; Ronald Goodman, *Lakota Star Knowledge*, as summarised by KVNF, the WoLakota Project and Windows to the Universe; James Mooney, *Myths of the Cherokee* (1900); Wikipedia on Dôn and Arianrhod; Job 9:9, 38:31-32 and Amos 5:8 (King James Version).
