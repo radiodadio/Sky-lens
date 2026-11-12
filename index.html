@@ -166,6 +166,7 @@
 </div>
 
 <script src="skydata.js"></script>
+<script src="skycultures.js"></script>
 <script>
 /* ---------- Ursa Major multicultural overlay (verified dataset) ---------- */
 const HIP={Dubhe:54061,Merak:53910,Phecda:58001,Megrez:59774,Alioth:62956,Mizar:65378,Alcor:65477,Alkaid:67301,Arcturus:69673};
@@ -193,19 +194,35 @@ const UMA_TALES={
  hungarian:{title:"Göncöl's Wagon",status:"well-documented",text:
 "Across much of Europe the Dipper is read not as a bear but as a wagon, and in Hungarian it is Göncöl's Wagon — Göncölszekér. It is named for Göncöl, a táltos, a shaman of old Magyar belief, who drove the wagon across the heavens carrying a medicine said to cure any illness. When the wagon is finally mended and whole, the old saying goes, the world will end. It is one of the gentler images of this star pattern — not a hunt or a funeral but a healer's cart crossing the night."}
 };
+const SC=window.SKYCULT||{cultures:{},extra:[]};
 const TRADITIONS=[
- {id:"greek",name:"Greek",sub:"Callisto & the Great Bear",group:"Spine",on:true},
+ {id:"greek",name:"Greek",sub:"All 88 classical figures · Callisto & the Great Bear",group:"Spine",on:true},
  {id:"arabic",name:"Arabic",sub:"Daughters of the Bier · star names",group:"Spine",on:true},
- {id:"chinese",name:"Chinese",sub:"Běidǒu · the emperor's chariot",group:"Spine",on:true},
- {id:"hindu",name:"Hindu",sub:"Saptarishi · the Seven Sages",group:"Spine",on:true},
- {id:"mikmaq",name:"Mi'kmaq",sub:"The Celestial Bear hunt",group:"North America",on:true},
- {id:"hungarian",name:"Hungarian",sub:"Göncöl's Wagon",group:"European",on:true}
+ {id:"chinese",name:"Chinese",sub:"Three Enclosures & 28 mansions · Běidǒu",group:"Spine",on:true,cult:"chinese"},
+ {id:"hindu",name:"Hindu / Vedic",sub:"Nakshatras · Saptarishi, the Seven Sages",group:"Spine",on:true,cult:"indian"},
+ {id:"hungarian",name:"Hungarian",sub:"Göncöl's Wagon",group:"European",on:true},
+ {id:"mikmaq",name:"Mi'kmaq",sub:"The Celestial Bear hunt",group:"North America",on:true}
 ];
-const LENS_WITH_FIGURE={greek:true,mikmaq:true}; // others reuse Greek lines + own names/tale for now
+const GROUP_ORDER=["Spine","European","North America","Mesoamerica","Southern sky"];
+for(const cid in SC.cultures){ if(cid==="chinese"||cid==="indian")continue; const c=SC.cultures[cid];
+  TRADITIONS.push({id:cid,name:c.name,sub:c.sub,group:c.group,on:c.group!=="Southern sky",cult:cid}); }
+TRADITIONS.sort((a,b)=>GROUP_ORDER.indexOf(a.group)-GROUP_ORDER.indexOf(b.group));
+const TRAD={}; TRADITIONS.forEach(t=>TRAD[t.id]=t);
+for(const cid in SC.cultures){const c=SC.cultures[cid]; c.hipFig={}; c.figs.forEach(f=>f.l.forEach(l=>l.forEach(h=>{if(!(h in c.hipFig))c.hipFig[h]=f;})));}
+function lensCult(){const t=TRAD[activeLens]; return (t&&t.cult&&SC.cultures[t.cult])||null;}
+let showGhost=true;
+// remembered choices (per browser; fine to lose)
+function saveState(){try{localStorage.setItem('skylens.v1',JSON.stringify({on:TRADITIONS.filter(t=>t.on).map(t=>t.id),lens:activeLens,ghost:showGhost,night:document.documentElement.classList.contains('night')}));}catch(e){}}
+function loadState(){try{const st=JSON.parse(localStorage.getItem('skylens.v1')||'null'); if(!st)return;
+  if(Array.isArray(st.on)&&st.on.length){const set=new Set(st.on);TRADITIONS.forEach(t=>t.on=set.has(t.id));}
+  if(st.lens&&TRAD[st.lens]&&TRAD[st.lens].on)activeLens=st.lens; if(typeof st.ghost==='boolean')showGhost=st.ghost;
+  if(st.night){document.documentElement.classList.add('night');}}catch(e){}}
 
 /* ---------- catalog indexing ---------- */
 const SD=window.SKYDATA;
 const byHip={}; SD.stars.forEach(s=>byHip[s[0]]=s); // [hip,ra,dec,mag,name]
+// fainter stars (and a few sky points, mag 99 = not drawn) that the imported figures need
+SC.extra.forEach(s=>{ if(!byHip[s[0]]){SD.stars.push(s);byHip[s[0]]=s;} });
 const UMA_HIPS=new Set(Object.values(HIP));
 
 /* ---------- astronomy ---------- */
@@ -305,7 +322,7 @@ function smoothBasis(B){
 let MODE="live"; // live | map | tour
 let locked=false, lockedView=null; // frozen camera frame when Point&Lock
 let mapView={az:0,alt:45};
-let activeLens="mikmaq";
+let activeLens="greek";
 const FOV=68*D2R;
 let W=0,Hh=0,DPR=1;
 const cv=document.getElementById('sky'), ctx=cv.getContext('2d');
@@ -336,7 +353,7 @@ function project(vec,B,focal){
 let starScreen={}; // hip -> {x,y,mag}
 function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 const CARD8=["N","NE","E","SE","S","SW","W","NW"];
-const LENS_LABEL={arabic:"Banāt Naʿsh",chinese:"Běidǒu 北斗",hindu:"Saptarishi",hungarian:"Göncölszekér"};
+const LENS_LABEL={arabic:"Banāt Naʿsh",hungarian:"Göncölszekér"};
 let frameN=0, autoStatus=true;
 function draw(){
   requestAnimationFrame(draw);
@@ -360,6 +377,7 @@ function draw(){
     const p=project(dirVec(aa.az,aa.alt),B,focal); if(!p) continue;
     if(p.x<-20||p.x>W+20||p.y<-20||p.y>Hh+20) continue;
     starScreen[s[0]]={x:p.x,y:p.y,mag:s[3],name:s[4],alt:aa.alt};
+    if(s[3]>90) continue; // sky point used only as a line vertex
     const r=Math.max(.6,(3.3-0.46*s[3]))*DPR;
     ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7); ctx.fillStyle=starCol;
     ctx.globalAlpha=Math.max(.35,Math.min(1,1.1-0.12*s[3])); ctx.fill(); ctx.globalAlpha=1;
@@ -368,12 +386,24 @@ function draw(){
   const drawSeg=(hips,col,wd)=>{ctx.strokeStyle=col;ctx.lineWidth=wd*DPR;
     for(let i=0;i<hips.length-1;i++){const A=starScreen[hips[i]],Bp=starScreen[hips[i+1]];
       if(A&&Bp){ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(Bp.x,Bp.y);ctx.stroke();}}};
-  const mik=(activeLens==="mikmaq");
-  for(const c2 of SD.cons){
-    const isUMa=(c2.iau==="UMa");
-    for(const seg of c2.lines){const hips=seg.filter(n=>typeof n==="number");
-      if(mik) drawSeg(hips, ghost, 1); // Greek sky as faint ghost lines behind the Mi'kmaq bear
-      else drawSeg(hips, accent, (seg[0]==="thin"?1:(isUMa?2.3:1.6)));}
+  const mik=(activeLens==="mikmaq"), cult=lensCult(), under=(mik||!!cult);
+  if(!under || showGhost){
+    if(under) ctx.globalAlpha=cult?.5:1;
+    for(const c2 of SD.cons){
+      const isUMa=(c2.iau==="UMa");
+      for(const seg of c2.lines){const hips=seg.filter(n=>typeof n==="number");
+        if(under) drawSeg(hips, ghost, 1); // Greek sky as faint ghost lines behind another tradition's figures
+        else drawSeg(hips, accent, (seg[0]==="thin"?1:(isUMa?2.3:1.6)));}
+    }
+    ctx.globalAlpha=1;
+  }
+  const figLabels=[];
+  if(cult){
+    for(const f of cult.figs){ let best=null;
+      for(const l of f.l){ drawSeg(l, accent, 2);
+        for(const h of l){const q=starScreen[h]; if(q&&q.x>0&&q.x<W&&q.y>0&&q.y<Hh&&(!best||q.mag<best.mag))best=q;} }
+      if(best) figLabels.push({s:best,f});
+    }
   }
   if(mik){
     for(const seg of UMA_FIG.mikmaq.lines) drawSeg(seg, accent, 2.3);
@@ -383,13 +413,25 @@ function draw(){
   }
   // labels: named bright stars
   ctx.fillStyle=dim; ctx.font=`500 ${11*DPR}px ${FONT}`;
-  for(const hip in starScreen){const s=starScreen[hip]; if(s.name && s.mag<2.3){ctx.fillText(s.name,s.x+6*DPR,s.y-6*DPR);}}
-  // constellation name near its brightest on-screen star (every lens)
+  for(const hip in starScreen){const s=starScreen[hip]; if(s.name && s.mag<(cult?1.6:2.3)){ctx.fillText(s.name,s.x+6*DPR,s.y-6*DPR);}}
   ctx.font=`600 ${12*DPR}px ${FONT}`;
-  for(const c2 of SD.cons){
-    if(mik && c2.iau==="UMa") continue;
-    let best=null;for(const seg of c2.lines)for(const n of seg){if(typeof n==="number"&&starScreen[n]&&(!best||starScreen[n].mag<best.mag))best=starScreen[n];}
-    if(best){ctx.fillStyle=mik?ghost:accent;ctx.globalAlpha=.9;ctx.fillText(c2.name,best.x+6*DPR,best.y+14*DPR);ctx.globalAlpha=1;}
+  if(cult){
+    // this tradition's own figure names; when the sky is crowded (Chinese), label the brightest ones only
+    figLabels.sort((a,b)=>a.s.mag-b.s.mag);
+    ctx.fillStyle=accent; ctx.globalAlpha=.95;
+    const placed=[]; let shown=0;
+    for(const o of figLabels){ if(shown>=18)break; const f=o.f; let t=f.v&&f.n?(f.v+" · "+f.n):(f.v||f.n); if(t.length>34)t=f.n||f.v;
+      const x=o.s.x+6*DPR, y=o.s.y+14*DPR, w=ctx.measureText(t).width, h=15*DPR;
+      if(placed.some(r=>x<r.x+r.w+4*DPR&&x+w+4*DPR>r.x&&y<r.y+r.h&&y+h>r.y)) continue; // don't stack labels on each other
+      placed.push({x,y,w,h}); shown++; ctx.fillText(t,x,y);}
+    ctx.globalAlpha=1;
+  } else {
+    // constellation name near its brightest on-screen star
+    for(const c2 of SD.cons){
+      if(mik && c2.iau==="UMa") continue;
+      let best=null;for(const seg of c2.lines)for(const n of seg){if(typeof n==="number"&&starScreen[n]&&(!best||starScreen[n].mag<best.mag))best=starScreen[n];}
+      if(best){ctx.fillStyle=mik?ghost:accent;ctx.globalAlpha=.9;ctx.fillText(c2.name,best.x+6*DPR,best.y+14*DPR);ctx.globalAlpha=1;}
+    }
   }
   // live read-out of where the view is aimed
   if((frameN++%8)===0){
@@ -420,8 +462,12 @@ addEventListener('pointercancel',()=>drag=null);
 cv.addEventListener('click',ev=>{
   if(dragMoved){dragMoved=false;return;} // end of a drag is not a tap
   const x=ev.clientX*DPR,y=ev.clientY*DPR; let best=null,bd=1e9;
-  for(const hip in starScreen){const s=starScreen[hip];const d=Math.hypot(s.x-x,s.y-y);if(d<bd){bd=d;best=+hip;}}
-  if(best!=null && bd<44*DPR){ openTaleForHip(best); }
+  const cult=lensCult(); let fb=null,fd=1e9; // prefer a star that belongs to a figure of the current lens
+  for(const hip in starScreen){const s=starScreen[hip]; if(s.mag>90)continue; const d=Math.hypot(s.x-x,s.y-y);
+    if(d<bd){bd=d;best=+hip;}
+    if(cult&&cult.hipFig[hip]&&d<fd){fd=d;fb=+hip;}}
+  if(fb!=null && fd<44*DPR) openTaleForHip(fb);
+  else if(best!=null && bd<44*DPR) openTaleForHip(best);
 });
 function constellationOfHip(hip){
   if(UMA_HIPS.has(hip)) return "UMa";
@@ -448,9 +494,11 @@ $('statusTxt').onclick=()=>{ if(MODE!=="live"||!haveOrient)return; locked=!locke
 // lenses
 function renderLenses(){const el=$('lenses');el.innerHTML='';
   TRADITIONS.filter(t=>t.on).forEach(t=>{const b=document.createElement('button');b.className='chip'+(t.id===activeLens?' on':'');b.textContent=t.name;
-    b.onclick=()=>{activeLens=t.id;renderLenses();};el.appendChild(b);});
+    b.onclick=()=>{activeLens=t.id;renderLenses();saveState();};el.appendChild(b);});
+  const act=el.querySelector('.chip.on'); if(act&&act.scrollIntoView){try{act.scrollIntoView({block:'nearest',inline:'center'});}catch(e){}}
+  if(!TRAD[activeLens]||!TRAD[activeLens].on){const f=TRADITIONS.find(t=>t.on); if(f){activeLens=f.id;return renderLenses();}}
 }
-renderLenses();
+loadState(); renderLenses();
 
 // align overlay
 const FRAMED=(()=>{try{return window.self!==window.top;}catch(e){return true;}})();
@@ -495,7 +543,29 @@ $('latAlt').textContent=Math.round(OBS.lat)+'°'; $('latAlt2').textContent=Math.
 
 /* ---------- tale sheet ---------- */
 let curCon="UMa", speaking=false, rate=1.0;
-function openTaleForHip(hip){ const iau=constellationOfHip(hip); openTale(iau||"UMa", hip); }
+function starLabel(hip){const s=byHip[hip]; return (s&&s[4])?s[4]:("HIP "+hip);}
+function openTaleForHip(hip){
+  const cult=lensCult();
+  if(UMA_HIPS.has(hip) && UMA_TALES[activeLens]) return openTale("UMa",hip); // the Dipper has full tales
+  if(cult){ const f=cult.hipFig[hip]; if(f) return openFigure(TRAD[activeLens],cult,f,hip); }
+  const iau=constellationOfHip(hip);
+  if(iau) return openTale(iau,hip);
+  // a star outside every figure
+  $('taleCon').textContent=starLabel(hip); $('taleSub').textContent="Magnitude "+byHip[hip][3]; $('taleTrads').innerHTML='';
+  $('taleTitle').textContent="A star on its own"; $('taleStatus').textContent="● Not part of a figure in this lens";
+  $('taleText').textContent="This star doesn't belong to any figure drawn in the "+TRAD[activeLens].name+" lens."+(cult&&cult.stars[hip]?"\n\nIn this tradition it is called: "+cult.stars[hip]:""); $('nameLayer').innerHTML='';
+  $('taleSheet').classList.add('up');
+}
+function openFigure(T,cult,f,hip){
+  if(speaking)stopSpeak();
+  $('taleCon').textContent=f.v||f.n; $('taleSub').textContent=(f.v&&f.n?f.n+" · ":"")+T.name; $('taleTrads').innerHTML='';
+  $('taleTitle').textContent="A figure of the "+T.name+" sky"; $('taleStatus').textContent="● Figure verified against Stellarium's sky-culture data";
+  let t=""; if(hip!=null&&cult.stars[hip]) t+=starLabel(hip)+" in this tradition: "+cult.stars[hip]+"\n\n"; else if(hip!=null&&byHip[hip]&&byHip[hip][4]) t+="Star tapped: "+byHip[hip][4]+"\n\n";
+  t+="The figure and its name are drawn as this tradition maps the sky. Its tale hasn't been written yet — tales are being added constellation by constellation, each checked against sources before it goes in.";
+  $('taleText').textContent=t;
+  const nl=$('nameLayer'); nl.innerHTML=''; const d=document.createElement('div'); d.className='pre'; d.textContent="Figure data: "+cult.credit+" · via Stellarium · "+cult.lic; nl.appendChild(d);
+  $('taleSheet').classList.add('up');
+}
 function openTale(iau,hip){
   curCon=iau;
   const sheet=$('taleSheet');
@@ -515,8 +585,8 @@ function openTale(iau,hip){
   sheet.classList.add('up');
 }
 function renderTradTabs(){const el=$('taleTrads');el.innerHTML='';
-  TRADITIONS.filter(t=>t.on).forEach(t=>{const b=document.createElement('button');b.className='chip'+(t.id===activeLens?' on':'');b.textContent=t.name;
-    b.onclick=()=>{activeLens=t.id;renderLenses();renderTradTabs();showTradition(t.id);};el.appendChild(b);});
+  TRADITIONS.filter(t=>t.on&&UMA_TALES[t.id]).forEach(t=>{const b=document.createElement('button');b.className='chip'+(t.id===activeLens?' on':'');b.textContent=t.name;
+    b.onclick=()=>{activeLens=t.id;renderLenses();renderTradTabs();showTradition(t.id);saveState();};el.appendChild(b);});
 }
 function showTradition(id,hip){ const tl=UMA_TALES[id]||UMA_TALES.greek;
   $('taleTitle').textContent=tl.title; $('taleStatus').textContent="● Verified · "+tl.status; $('taleText').textContent=tl.text;
@@ -549,18 +619,26 @@ function renderTrad(){const list=$('tradList');list.innerHTML='';
   groups.forEach(g=>{const h=document.createElement('div');h.className='pre';h.style.margin='10px 4px 6px';h.textContent=g.toUpperCase();list.appendChild(h);
     TRADITIONS.filter(t=>t.group===g).forEach(t=>{const row=document.createElement('label');row.className='tog';
       row.innerHTML=`<span class="box ${t.on?'on':''}">${t.on?'✓':''}</span><span style="flex:1"><b>${t.name}</b><br><span class="star-meta">${t.sub}</span></span>`;
-      row.onclick=()=>{t.on=!t.on; if(!TRADITIONS.some(x=>x.on))t.on=true; renderTrad();renderLenses();updCount();};list.appendChild(row);});});
+      row.onclick=()=>{t.on=!t.on; if(!TRADITIONS.some(x=>x.on))t.on=true; renderTrad();renderLenses();updCount();saveState();};list.appendChild(row);});});
+  const g=document.createElement('label');g.className='tog';
+  g.innerHTML=`<span class="box ${showGhost?'on':''}">${showGhost?'✓':''}</span><span style="flex:1"><b>Greek ghost lines</b><br><span class="star-meta">Faint classical figures behind other traditions, for orientation</span></span>`;
+  g.onclick=()=>{showGhost=!showGhost;renderTrad();saveState();}; list.appendChild(g);
   const note=document.createElement('div');note.className='mut';note.style.margin='10px 4px';
-  note.textContent='Full figures currently draw for Greek (all 88 constellations) and Mi’kmaq (Ursa Major). Other lenses show their star-names and tales on Ursa Major now; their own figures are being added.';
+  note.textContent='Each lens redraws the sky with that tradition’s own figures and names. Arabic and Hungarian still sit on the Greek lines (no openly licensed figure set yet), and Mi’kmaq draws the Bear only. Full tales exist for the Big Dipper so far.';
   list.appendChild(note);
+  const cr=document.createElement('div');cr.className='pre';cr.style.margin='12px 4px 4px';cr.style.lineHeight='1.5';
+  let h='FIGURE DATA — adapted from the Stellarium sky cultures collection (reduced to lines and names):<br>';
+  for(const cid in SC.cultures){const c=SC.cultures[cid]; h+='• '+c.name.replace(/</g,'&lt;')+' — '+c.credit.replace(/</g,'&lt;')+' ('+c.lic+')<br>';}
+  cr.innerHTML=h; list.appendChild(cr);
 }
 function updCount(){$('tradCount').textContent=TRADITIONS.filter(t=>t.on).length+' of '+TRADITIONS.length+' on';}
-const PRESETS={Spine:['greek','arabic','chinese','hindu'],'North America':['mikmaq'],European:['hungarian'],All:TRADITIONS.map(t=>t.id)};
+const PRESETS={}; GROUP_ORDER.forEach(g=>{const ids=TRADITIONS.filter(t=>t.group===g).map(t=>t.id); if(ids.length)PRESETS[g]=ids;}); PRESETS.All=TRADITIONS.map(t=>t.id);
 function renderPresets(){const el=$('tradPresets');el.innerHTML='';Object.keys(PRESETS).forEach(p=>{const b=document.createElement('button');b.className='chip';b.textContent=p;
-  b.onclick=()=>{const set=new Set(PRESETS[p]);TRADITIONS.forEach(t=>t.on=set.has(t.id));if(!TRADITIONS.some(x=>x.on))TRADITIONS[0].on=true;renderTrad();renderLenses();updCount();};el.appendChild(b);});}
+  b.onclick=()=>{const set=new Set(PRESETS[p]);TRADITIONS.forEach(t=>t.on=set.has(t.id));if(!TRADITIONS.some(x=>x.on))TRADITIONS[0].on=true;renderTrad();renderLenses();updCount();saveState();};el.appendChild(b);});}
 $('btnTrad').onclick=()=>{renderTrad();renderPresets();updCount();$('tradSheet').classList.add('up');};
 $('tradClose').onclick=()=>$('tradSheet').classList.remove('up');
-$('nightToggle').onchange=e=>document.documentElement.classList.toggle('night',e.target.checked);
+$('nightToggle').onchange=e=>{document.documentElement.classList.toggle('night',e.target.checked);saveState();};
+$('nightToggle').checked=document.documentElement.classList.contains('night');
 
 /* ---------- tour ---------- */
 function startTour(){ // find a bright, well-placed constellation now; point map there and narrate
