@@ -32,3 +32,11 @@ Cultures published under no-derivatives licences (Arabic, Babylonian, Kamilaroi/
 ## Star positions
 
 Hipparcos positions and magnitudes; fainter figure stars from the [HYG database](https://github.com/astronexus/HYG-Database) (CC BY-SA 4.0).
+
+## Sun, Moon and planets (`ephem.js`)
+
+Positions use the low-precision method published by Paul Schlyter ("Computing planetary positions"); precession follows Meeus, *Astronomical Algorithms*. Checked against PyEphem to within about 3 arc-minutes.
+
+## Tales (`tales.js`)
+
+The tale texts are original, written for this app. Facts were checked against: the Stellarium sky-culture descriptions listed above; R. H. Allen, *Star Names*; the IAU Working Group on Star Names etymologies (Kunitzsch and Smart); John MacDonald, *The Arctic Sky* (Inuit); Nancy C. Maryboy and David Begay (Diné); Museums Victoria and the Malleefowl Recovery Group on the Boorong sky; Hungarian ethnography (Magyar Néprajz) and the chronicle tradition of Prince Csaba; and standard reference accounts of Greek, Egyptian, Chinese, Indian, Maya, Aztec and Māori star lore.

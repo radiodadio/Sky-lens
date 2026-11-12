@@ -99,20 +99,23 @@
 <!-- ALIGN / LAUNCH GATE -->
 <div id="align" class="overlay">
   <div class="row" style="justify-content:space-between">
-    <div><h2>Align to Polaris</h2><div class="mut">One tap pins the compass for this session</div></div>
+    <div><h2 id="alignTitle">Align to Polaris</h2><div class="mut">One tap pins the compass for this session</div></div>
     <button class="btn icon" id="alignClose" aria-label="Skip">✕</button>
   </div>
-  <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:16px">
+  <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:13px; overflow:auto">
     <div class="mut" id="permNote">To point at the sky, this needs motion &amp; (optionally) camera access.</div>
-    <button class="btn accent" id="enableSensors" style="height:52px; justify-content:center; font-size:16px">Enable motion sensors</button>
-    <button class="btn" id="enableCam" style="height:48px; justify-content:center">Turn on camera backdrop (optional)</button>
-    <div style="background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px">
-      <div class="mut">Find Polaris: follow the two <b style="color:var(--text)">Pointer</b> stars (Dubhe → Merak) off the Big Dipper's bowl about five times their gap. It sits due north, about <b id="latAlt" style="color:var(--text)">44°</b> up.</div>
+    <button class="btn accent" id="enableSensors" style="height:52px; justify-content:center; font-size:16px; flex:none">Enable motion sensors</button>
+    <button class="btn" id="enableCam" style="height:48px; justify-content:center; flex:none">Turn on camera backdrop (optional)</button>
+    <div>
+      <div class="pre" style="margin-bottom:6px">ALIGN ON</div>
+      <div id="alignTargets" style="display:flex; gap:7px; flex-wrap:wrap"></div>
     </div>
-    <div class="mut" id="liveAim" style="text-align:center">Point at Polaris, then tap Align.</div>
-    <button class="btn accent" id="doAlign" style="height:54px; justify-content:center; font-size:16px">Align here</button>
-    <button class="btn" id="skipAlign" style="height:46px; justify-content:center">Skip — I'll use Sky Map</button>
-    <div class="mut" style="text-align:center; font-size:11px">Polaris is due north, <span id="latAlt2">44°</span> up from your location — aligning fixes heading and tilt at once.</div>
+    <div style="background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px">
+      <div class="mut" id="alignHint"></div>
+    </div>
+    <div class="mut" id="liveAim" style="text-align:center">Point at it, then tap Align.</div>
+    <button class="btn accent" id="doAlign" style="height:54px; justify-content:center; font-size:16px; flex:none">Align here</button>
+    <button class="btn" id="skipAlign" style="height:46px; justify-content:center; flex:none">Skip — I'll use Sky Map</button>
   </div>
 </div>
 
@@ -132,6 +135,12 @@
 
 <!-- BOTTOM -->
 <div id="bottom">
+  <div id="tourBar" class="hidden" style="display:flex; gap:8px; align-items:center; padding:5px; margin:0 4px 8px; background:var(--panel); border:1px solid var(--line); border-radius:28px">
+    <button class="btn icon" id="tourPrev" aria-label="Previous stop">‹</button>
+    <div id="tourLbl" style="flex:1; text-align:center; font-size:13px; font-weight:600"></div>
+    <button class="btn accent" id="tourTale">Tale</button>
+    <button class="btn icon" id="tourNext" aria-label="Next stop">›</button>
+  </div>
   <div id="lenses"></div>
 </div>
 
@@ -209,6 +218,8 @@
 </script>
 <script src="skydata.js"></script>
 <script src="skycultures.js"></script>
+<script src="ephem.js"></script>
+<script src="tales.js"></script>
 <script>
 /* ---------- Ursa Major multicultural overlay (verified dataset) ---------- */
 const HIP={Dubhe:54061,Merak:53910,Phecda:58001,Megrez:59774,Alioth:62956,Mizar:65378,Alcor:65477,Alkaid:67301,Arcturus:69673};
@@ -265,6 +276,19 @@ const SD=window.SKYDATA;
 const byHip={}; SD.stars.forEach(s=>byHip[s[0]]=s); // [hip,ra,dec,mag,name]
 // fainter stars (and a few sky points, mag 99 = not drawn) that the imported figures need
 SC.extra.forEach(s=>{ if(!byHip[s[0]]){SD.stars.push(s);byHip[s[0]]=s;} });
+// catalogue positions are J2000; bring them to today's equinox so they agree with the clock and the planets
+if(window.precessFromJ2000){const now=new Date(); SD.stars.forEach(s=>{const q=precessFromJ2000(s[1],s[2],now); s[1]=q[0]; s[2]=q[1];});}
+// tale subjects (tales.js): one patch of sky, many traditions
+const SUBJ=window.SKYTALES||[]; const SUBJ_IAU={}, SUBJ_HIP={}, SUBJ_FIG={};
+SUBJ.forEach(s=>{(s.iau||[]).forEach(i=>SUBJ_IAU[i]=s);(s.hips||[]).forEach(h=>SUBJ_HIP[h]=s); for(const c in (s.figs||{})) s.figs[c].forEach(n=>SUBJ_FIG[c+'|'+n]=s);});
+// Sun, Moon, planets (ephem.js), refreshed every few seconds
+let BODIES=[], bodiesT=0, bodyScreen={};
+const BODY_STYLE={Sun:{r:9,c:'#FFD866'},Moon:{r:8,c:'#EDEBE0'},Mercury:{r:3,c:'#C9C3B8'},Venus:{r:4.6,c:'#FFF6D6'},Mars:{r:3.6,c:'#FF9A76'},Jupiter:{r:4.2,c:'#F7DDB0'},Saturn:{r:3.6,c:'#EBD58F'}};
+function bodiesNow(){const t=Date.now(); if(window.skyBodies&&(t-bodiesT>5000||!BODIES.length)){BODIES=skyBodies(new Date(t));bodiesT=t;} return BODIES;}
+function bodyAltAz(b,lst){const aa=altaz(b.ra,b.dec,OBS.lat,lst); if(b.id==="Moon"&&b.distER) aa.alt-=Math.asin(1/b.distER)*R2D*Math.cos(aa.alt*D2R); return aa;} // Moon: parallax
+function sunAltNow(){const lst=lstDeg(new Date(),OBS.lon), b=bodiesNow().find(x=>x.id==="Sun"); return b?bodyAltAz(b,lst).alt:-90;}
+const CARD16=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+const card16=az=>CARD16[Math.round(az/22.5)%16];
 const UMA_HIPS=new Set(Object.values(HIP));
 
 /* ---------- astronomy ---------- */
@@ -299,7 +323,7 @@ function dirVec(azDeg,altDeg){ // world (E,N,U)
 /* ---------- observer ---------- */
 let OBS={lat:43.65,lon:-79.38}; // Toronto default
 try{ navigator.geolocation && navigator.geolocation.getCurrentPosition(
-  p=>{OBS.lat=p.coords.latitude;OBS.lon=p.coords.longitude; document.getElementById('latAlt').textContent=Math.round(OBS.lat)+'°'; document.getElementById('latAlt2').textContent=Math.round(OBS.lat)+'°';},
+  p=>{OBS.lat=p.coords.latitude;OBS.lon=p.coords.longitude; try{renderAlignTargets();}catch(e){}},
   ()=>{}, {timeout:8000}); }catch(e){}
 
 /* ---------- orientation ---------- */
@@ -399,6 +423,8 @@ const LENS_LABEL={arabic:"Banāt Naʿsh",hungarian:"Göncölszekér"};
 let frameN=0, autoStatus=true;
 function draw(){
   requestAnimationFrame(draw);
+  if(panTo && MODE==="tour"){ const da=angDiff(panTo.az,mapView.az), dh=panTo.alt-mapView.alt;
+    mapView.az=((mapView.az+da*0.12)%360+360)%360; mapView.alt+=dh*0.12; if(Math.abs(da)<0.05&&Math.abs(dh)<0.05) panTo=null; }
   const lst=lstDeg(new Date(),OBS.lon), B=viewBasis(), focal=(Hh/2)/Math.tan(FOV/2);
   ctx.clearRect(0,0,W,Hh);
   starScreen={};
@@ -424,6 +450,21 @@ function draw(){
     ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7); ctx.fillStyle=starCol;
     ctx.globalAlpha=Math.max(.35,Math.min(1,1.1-0.12*s[3])); ctx.fill(); ctx.globalAlpha=1;
   }
+  // Sun, Moon and planets
+  bodyScreen={}; const nightMode=document.documentElement.classList.contains('night');
+  for(const b of bodiesNow()){
+    const aa=bodyAltAz(b,lst); if(aa.alt<-1) continue;
+    const p=project(dirVec(aa.az,aa.alt),B,focal); if(!p||p.x<-30||p.x>W+30||p.y<-30||p.y>Hh+30) continue;
+    const st=BODY_STYLE[b.id], col=nightMode?starCol:st.c, r=st.r*DPR;
+    bodyScreen[b.id]={x:p.x,y:p.y,az:aa.az,alt:aa.alt};
+    if(b.id==="Sun"){ctx.globalAlpha=.22;ctx.beginPath();ctx.arc(p.x,p.y,r*2.4,0,7);ctx.fillStyle=col;ctx.fill();ctx.globalAlpha=1;}
+    ctx.beginPath();ctx.arc(p.x,p.y,r,0,7);ctx.fillStyle=col;ctx.fill();
+    if(b.id!=="Sun"&&b.id!=="Moon"){ctx.globalAlpha=.5;ctx.lineWidth=1*DPR;ctx.strokeStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,r+3.5*DPR,0,7);ctx.stroke();ctx.globalAlpha=1;}
+    ctx.fillStyle=col;ctx.font=`600 ${12*DPR}px ${FONT}`;ctx.fillText(b.name,p.x+r+6*DPR,p.y+4*DPR);
+  }
+  // tour: ring around the current stop
+  if(MODE==="tour" && TOUR.stops.length){ const q=TOUR.stops[TOUR.i].pos(lst), p=project(dirVec(q.az,q.alt),B,focal);
+    if(p){ctx.globalAlpha=.75;ctx.strokeStyle=accent;ctx.lineWidth=1.6*DPR;ctx.setLineDash([6*DPR,5*DPR]);ctx.beginPath();ctx.arc(p.x,p.y,34*DPR,0,7);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;} }
   // figure lines
   const drawSeg=(hips,col,wd)=>{ctx.strokeStyle=col;ctx.lineWidth=wd*DPR;
     for(let i=0;i<hips.length-1;i++){const A=starScreen[hips[i]],Bp=starScreen[hips[i+1]];
@@ -484,7 +525,7 @@ function draw(){
       else if(MODE==="live") setStatus("No motion data · drag to look around");
     }
     const la=document.getElementById('liveAim');
-    if(la && haveOrient && !document.getElementById('align').classList.contains('hidden')) la.textContent="Aimed "+where+" — point at Polaris, then tap Align.";
+    if(la && haveOrient && !document.getElementById('align').classList.contains('hidden')) la.textContent="Aimed "+where+" — point at "+(alignTarget==="Polaris"?"Polaris":"the "+alignTarget).replace("the Venus","Venus").replace("the Mars","Mars").replace("the Jupiter","Jupiter").replace("the Saturn","Saturn")+", then tap Align.";
   }
 }
 function conLines(iau){const c=SD.cons.find(x=>x.iau===iau);return c?c.lines:[];}
@@ -493,7 +534,7 @@ requestAnimationFrame(draw);
 /* ---------- pointer: drag to look (map / tour, or live without sensors), tap to identify ---------- */
 let drag=null, dragMoved=false;
 function canDrag(){return !(MODE==="live" && haveOrient);}
-cv.addEventListener('pointerdown',e=>{ dragMoved=false; if(!canDrag())return; drag={x:e.clientX,y:e.clientY,az:mapView.az,alt:mapView.alt}; });
+cv.addEventListener('pointerdown',e=>{ dragMoved=false; panTo=null; if(!canDrag())return; drag={x:e.clientX,y:e.clientY,az:mapView.az,alt:mapView.alt}; });
 addEventListener('pointermove',e=>{ if(!drag)return; const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
   if(Math.hypot(dx,dy)>8) dragMoved=true;
   const k=(FOV*R2D)/innerHeight; // sky follows the finger 1:1
@@ -504,6 +545,7 @@ addEventListener('pointercancel',()=>drag=null);
 cv.addEventListener('click',ev=>{
   if(dragMoved){dragMoved=false;return;} // end of a drag is not a tap
   const x=ev.clientX*DPR,y=ev.clientY*DPR; let best=null,bd=1e9;
+  for(const id in bodyScreen){const q=bodyScreen[id]; if(Math.hypot(q.x-x,q.y-y)<30*DPR){ openBody(id); return; }}
   const cult=lensCult(); let fb=null,fd=1e9; // prefer a star that belongs to a figure of the current lens
   for(const hip in starScreen){const s=starScreen[hip]; if(s.mag>90)continue; const d=Math.hypot(s.x-x,s.y-y);
     if(d<bd){bd=d;best=+hip;}
@@ -523,11 +565,12 @@ function setStatus(t){const el=$('statusTxt'); if(el.textContent!==t) el.textCon
 function setMode(m){
   document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on',x.dataset.mode===m));
   if(MODE==="live" && haveOrient && m!=="live"){ const d=vecAzAlt(viewBasis().f); mapView.az=d.az; mapView.alt=Math.max(-5,Math.min(89,d.alt)); } // keep looking the same way
-  MODE=m; locked=false; lockedView=null; smB=null; autoStatus=(m!=="tour");
+  MODE=m; locked=false; lockedView=null; smB=null; autoStatus=(m!=="tour"); panTo=null;
+  $('tourBar').classList.toggle('hidden',m!=="tour");
   if(m==="tour") startTour();
 }
 document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{
-  if(b.dataset.mode==="live" && !haveOrient){ $('align').classList.remove('hidden'); return; } // needs sensors first
+  if(b.dataset.mode==="live" && !haveOrient){ renderAlignTargets(); $('align').classList.remove('hidden'); return; } // needs sensors first
   setMode(b.dataset.mode);
 });
 // point & lock: tap the status pill in Live
@@ -569,19 +612,39 @@ $('enableCam').onclick=async()=>{
     const v=$('cam'); v.srcObject=st; await v.play(); v.classList.add('on'); $('enableCam').textContent='Camera backdrop on ✓';
   }catch(e){$('enableCam').textContent='Camera unavailable here';}
 };
+let alignTarget="Polaris";
+function alignOptions(){
+  const lst=lstDeg(new Date(),OBS.lon), o=[], P=byHip[11767], pa=P?altaz(P[1],P[2],OBS.lat,lst):{az:0,alt:OBS.lat}, day=sunAltNow()>-6;
+  o.push({id:"Polaris",az:pa.az,alt:pa.alt});
+  for(const b of bodiesNow()){ if(b.id==="Sun"||b.id==="Mercury")continue; if(day&&b.id!=="Moon")continue;
+    const aa=bodyAltAz(b,lst); if(aa.alt>(b.id==="Moon"?6:10)) o.push({id:b.id,az:aa.az,alt:aa.alt}); }
+  return o;
+}
+function renderAlignTargets(){
+  const o=alignOptions(); if(!o.some(x=>x.id===alignTarget)) alignTarget="Polaris";
+  const el=$('alignTargets'); el.innerHTML='';
+  o.forEach(t=>{const b=document.createElement('button'); b.className='chip'+(t.id===alignTarget?' on':''); b.textContent=t.id; b.onclick=()=>{alignTarget=t.id;renderAlignTargets();}; el.appendChild(b);});
+  const t=o.find(x=>x.id===alignTarget), up=Math.round(t.alt)+'° up', nm=(t.id==="Moon"?"The Moon":t.id);
+  $('alignTitle').textContent="Align to "+(t.id==="Moon"?"the Moon":t.id);
+  let h;
+  if(t.id==="Polaris") h="Find Polaris: follow the two Pointer stars (Dubhe → Merak) off the Big Dipper's bowl about five times their gap. It sits almost due north, about "+up+". If trees or buildings hide it, pick the Moon or a bright planet above when one is up.";
+  else h=nm+" is now "+up+" in the "+card16(t.az)+". Point the back of the phone straight at it"+(t.id==="Moon"?"":" — it is the bright steady 'star' there that doesn't twinkle")+", then tap Align.";
+  if(sunAltNow()>-6) h+=" (It's daytime or bright twilight, so only the Moon can be seen; planets are offered after dark.)";
+  $('alignHint').textContent=h;
+}
 function doAlign(){
   if(!haveOrient){ $('liveAim').textContent=sensorsTried?'No motion data, so there is nothing to align — use Sky Map.':'Tap "Enable motion sensors" first.'; return; }
   // Where the phone thinks it is aimed (no corrections) vs. where Polaris really is right now.
-  const d=vecAzAlt(liveBasis(true).f), P=byHip[11767];
-  const t=P?altaz(P[1],P[2],OBS.lat,lstDeg(new Date(),OBS.lon)):{az:0,alt:OBS.lat};
+  const d=vecAzAlt(liveBasis(true).f), opts=alignOptions();
+  const t=opts.find(x=>x.id===alignTarget)||opts[0]; // where the chosen target really is right now
   azOffset=angDiff(t.az,d.az); altOffset=t.alt-d.alt; aligned=true; smB=null;
   $('align').classList.add('hidden'); setMode("live");
 }
 $('doAlign').onclick=doAlign;
 $('alignClose').onclick=()=>{$('align').classList.add('hidden'); if(haveOrient) setMode("live"); else setMode("map");};
 $('skipAlign').onclick=()=>{$('align').classList.add('hidden'); setMode("map");};
-$('btnAlign').onclick=()=>{$('align').classList.remove('hidden');};
-$('latAlt').textContent=Math.round(OBS.lat)+'°'; $('latAlt2').textContent=Math.round(OBS.lat)+'°';
+$('btnAlign').onclick=()=>{renderAlignTargets();$('align').classList.remove('hidden');};
+renderAlignTargets();
 
 /* ---------- tale sheet ---------- */
 let curCon="UMa", speaking=false, rate=1.0;
@@ -589,14 +652,56 @@ function starLabel(hip){const s=byHip[hip]; return (s&&s[4])?s[4]:("HIP "+hip);}
 function openTaleForHip(hip){
   const cult=lensCult();
   if(UMA_HIPS.has(hip) && UMA_TALES[activeLens]) return openTale("UMa",hip); // the Dipper has full tales
-  if(cult){ const f=cult.hipFig[hip]; if(f) return openFigure(TRAD[activeLens],cult,f,hip); }
+  if(cult){ const f=cult.hipFig[hip]; if(f){ const sj=SUBJ_FIG[TRAD[activeLens].cult+'|'+f.n]; return sj?openSubject(sj,{fig:f,hip}):openFigure(TRAD[activeLens],cult,f,hip); } }
+  if(SUBJ_HIP[hip]) return openSubject(SUBJ_HIP[hip],{hip});
   const iau=constellationOfHip(hip);
-  if(iau) return openTale(iau,hip);
+  if(iau) return SUBJ_IAU[iau]?openSubject(SUBJ_IAU[iau],{hip}):openTale(iau,hip);
   // a star outside every figure
   $('taleCon').textContent=starLabel(hip); $('taleSub').textContent="Magnitude "+byHip[hip][3]; $('taleTrads').innerHTML='';
   $('taleTitle').textContent="A star on its own"; $('taleStatus').textContent="● Not part of a figure in this lens";
   $('taleText').textContent="This star doesn't belong to any figure drawn in the "+TRAD[activeLens].name+" lens."+(cult&&cult.stars[hip]?"\n\nIn this tradition it is called: "+cult.stars[hip]:""); $('nameLayer').innerHTML='';
   $('taleSheet').classList.add('up');
+}
+// a patch of sky with tales from several traditions
+let curSubj=null, curCtx=null;
+function subjTabs(s){ let k=Object.keys(s.tales).filter(id=>id==="more"||(TRAD[id]&&TRAD[id].on)); if(k.filter(x=>x!=="more").length===0) k=Object.keys(s.tales); return k; }
+function openSubject(s,ctx){
+  curSubj=s; curCtx=ctx||{}; const T=TRAD[activeLens], f=curCtx.fig;
+  if(f){ $('taleCon').textContent=f.v||f.n; $('taleSub').textContent=(f.v&&f.n?f.n+" · ":"")+T.name+" · "+s.name; }
+  else { $('taleCon').textContent=s.name; $('taleSub').textContent=s.sub; }
+  const tabs=subjTabs(s); showSubjTale(tabs.includes(activeLens)?activeLens:(tabs.includes("greek")?"greek":tabs[0]));
+  $('taleSheet').classList.add('up');
+}
+function showSubjTale(id){
+  const s=curSubj, tl=s.tales[id]; if(speaking)stopSpeak();
+  const el=$('taleTrads'); el.innerHTML='';
+  subjTabs(s).forEach(k=>{const b=document.createElement('button'); b.className='chip'+(k===id?' on':''); b.textContent=(k==="more"?"Other names":TRAD[k].name);
+    b.onclick=()=>{ if(TRAD[k]&&TRAD[k].on&&k!==activeLens){activeLens=k;renderLenses();saveState();} showSubjTale(k); }; el.appendChild(b);});
+  const on=el.querySelector('.chip.on'); if(on&&on.scrollIntoView){try{on.scrollIntoView({block:'nearest',inline:'center'});}catch(e){}}
+  $('taleTitle').textContent=tl.title; $('taleStatus').textContent="● Verified · "+tl.status; $('taleText').textContent=tl.text;
+  const nl=$('nameLayer'); nl.innerHTML=''; const T=TRAD[id], cult=T&&T.cult&&SC.cultures[T.cult]; const bits=[];
+  if(cult&&s.figs&&s.figs[T.cult]){ const names=s.figs[T.cult].map(n=>{const f=cult.figs.find(x=>x.n===n); return f?(f.v&&f.n?f.v+" ("+f.n+")":(f.v||f.n)):null;}).filter(Boolean);
+    if(names.length) bits.push("Drawn in the "+T.name+" lens as: "+names.join(", ")); }
+  const hip=curCtx&&curCtx.hip; if(cult&&hip!=null&&cult.stars[hip]) bits.push(starLabel(hip)+" in this tradition: "+cult.stars[hip]);
+  bits.forEach(t=>{const d=document.createElement('div'); d.className='star-meta'; d.style.marginBottom='4px'; d.textContent=t; nl.appendChild(d);});
+}
+const BODY_TEXT={
+ Sun:"The Sun is shown so you can see where it is against the stars — which constellation it is passing through, and so which ones are hidden in daylight. Never look at it directly, and never through the camera with any optical aid.",
+ Moon:"The Moon moves about thirteen degrees eastward against the stars every day — its own width each hour — so it is in a different place every night. Because it is close, where it appears depends slightly on where you stand; this position is worked out for your location.",
+ Mercury:"Mercury never strays far from the Sun, so it is only ever seen low in the twilight, for a few weeks at a time.",
+ Venus:"Venus is the brightest thing in the sky after the Sun and Moon — the Evening Star or the Morning Star, never far from the Sun and never up in the middle of the night.",
+ Mars:"Mars is the red one. Its brightness changes a great deal, peaking for a few weeks about every two years when Earth overtakes it.",
+ Jupiter:"Jupiter is a steady cream-white light, brighter than any star. It takes twelve years to circle the zodiac, spending about a year in each constellation.",
+ Saturn:"Saturn is a steady pale-gold light, about as bright as the brighter stars. It takes nearly thirty years to circle the zodiac."};
+function openBody(id){
+  const b=bodiesNow().find(x=>x.id===id); if(!b)return; if(speaking)stopSpeak();
+  const aa=bodyAltAz(b,lstDeg(new Date(),OBS.lon));
+  $('taleCon').textContent=(id==="Sun"||id==="Moon"?"The ":"")+b.name; $('taleTrads').innerHTML='';
+  $('taleSub').textContent=aa.alt>0?("Now "+Math.round(aa.alt)+"° up in the "+card16(aa.az)):"Below the horizon right now";
+  $('taleTitle').textContent=id==="Moon"?(Math.round(b.lit*100)+"% lit · "+(b.lit<0.03?"new":b.lit>0.97?"full":(b.waxing?"waxing":"waning"))):id==="Sun"?"Our star":"A wandering star";
+  $('taleStatus').textContent="● Position computed for your sky, good to a few arc-minutes";
+  $('taleText').textContent=BODY_TEXT[id]+(id!=="Sun"&&id!=="Mercury"?"\n\nYou can align the phone on it: tap ✛ and choose it under “Align on.”":"");
+  $('nameLayer').innerHTML=''; $('taleSheet').classList.add('up');
 }
 function openFigure(T,cult,f,hip){
   if(speaking)stopSpeak();
@@ -621,7 +726,7 @@ function openTale(iau,hip){
     $('taleTitle').textContent="Greek / IAU figure";
     $('taleStatus').textContent="● Star names from IAU · fuller tales coming";
     let extra=""; if(hip&&byHip[hip]&&byHip[hip][4]) extra="Brightest tapped: "+byHip[hip][4]+"\n\n";
-    $('taleText').textContent=extra+"This constellation currently shows its Greek/IAU figure and star names. The deep multicultural tales — like the six built for Ursa Major — are being added constellation by constellation. Tap Ursa Major (the Big Dipper) to see the full experience.";
+    $('taleText').textContent=extra+"This constellation shows its Greek/IAU figure and star names; its tales haven't been written yet. Full tales so far: the Big Dipper, Cassiopeia, Cygnus, Lyra, Aquila, the Pleiades and Orion. Try the Tour to be taken to the ones that are up now.";
     $('nameLayer').innerHTML='';
   }
   sheet.classList.add('up');
@@ -682,22 +787,34 @@ $('tradClose').onclick=()=>$('tradSheet').classList.remove('up');
 $('nightToggle').onchange=e=>{document.documentElement.classList.toggle('night',e.target.checked);saveState();};
 $('nightToggle').checked=document.documentElement.classList.contains('night');
 
-/* ---------- tour ---------- */
-function startTour(){ // find a bright, well-placed constellation now; point map there and narrate
-  const lst=lstDeg(new Date(),OBS.lon);
-  const picks=["UMa","Cas","Cyg","Lyr","Boo","Ori","Aur","Peg"];
-  let chosen=null;
-  for(const iau of picks){const c=SD.cons.find(x=>x.iau===iau);if(!c)continue;
-    let hip=null;for(const seg of c.lines)for(const n of seg)if(typeof n==="number"&&byHip[n]){if(!hip||byHip[n][3]<byHip[hip][3])hip=n;}
-    if(!hip)continue;const aa=altaz(byHip[hip][1],byHip[hip][2],OBS.lat,lst);
-    if(aa.alt>20){chosen={iau,az:aa.az,alt:aa.alt,name:c.name};break;}}
-  if(!chosen){setStatus("Nothing high up right now — try Map");return;}
-  autoStatus=false;
-  mapView.az=chosen.az; mapView.alt=chosen.alt;
-  const dir=chosen.az<45||chosen.az>315?"north":chosen.az<135?"east":chosen.az<225?"south":"west";
-  setStatus(`Tour: face ${dir}, ~${Math.round(chosen.alt)}° up`);
-  openTale(chosen.iau);
+/* ---------- tour: a walk through what is well placed right now ---------- */
+let TOUR={stops:[],i:0}, panTo=null;
+function brightestOf(iau){const c=SD.cons.find(x=>x.iau===iau); let hip=null; if(!c)return null;
+  for(const seg of c.lines)for(const n of seg)if(typeof n==="number"&&byHip[n]&&(hip==null||byHip[n][3]<byHip[hip][3]))hip=n; return hip;}
+function buildTour(){
+  const lst=lstDeg(new Date(),OBS.lon), stops=[], dark=sunAltNow()<-6;
+  for(const b of bodiesNow()){ if(b.id==="Sun")continue; if(!dark&&b.id!=="Moon")continue; const aa=bodyAltAz(b,lst);
+    if(aa.alt>8) stops.push({name:(b.id==="Moon"?"The Moon":b.name),key:-1000+stops.length,pos:l=>bodyAltAz(bodiesNow().find(x=>x.id===b.id)||b,l),open:()=>openBody(b.id)}); }
+  const cand=[{name:"The Big Dipper",hip:HIP.Alioth,open:()=>openTale("UMa")}]
+    .concat(SUBJ.map(sj=>({name:sj.name,hip:(sj.hips&&sj.hips[0])||brightestOf(sj.iau[0]),open:()=>openSubject(sj,{})})));
+  const add=c=>{const st=byHip[c.hip]; if(!st)return; const aa=altaz(st[1],st[2],OBS.lat,lst); if(aa.alt<15)return;
+    const circ=st[2]>90-OBS.lat+5, H=angDiff(lst,st[1]); // hour angle: larger = further west = sets sooner
+    stops.push({name:c.name,key:circ?-500:-H,pos:l=>altaz(st[1],st[2],OBS.lat,l),open:c.open}); };
+  cand.forEach(add);
+  if(stops.length<4) ["Boo","Aur","Peg","And","Per","Gem","Leo","Tau","CMa","Sco","Sgr","Vir","Her","UMi"].forEach(iau=>{const c=SD.cons.find(x=>x.iau===iau); if(c&&!SUBJ_IAU[iau]) add({name:c.name,hip:brightestOf(iau),open:()=>openTale(iau)});});
+  stops.sort((a,b)=>a.key-b.key); return stops;
 }
+function tourGo(i){
+  const n=TOUR.stops.length; if(!n){ setStatus("Nothing well placed right now — try Map"); $('tourLbl').textContent="Nothing well placed right now"; return; }
+  TOUR.i=((i%n)+n)%n; const st=TOUR.stops[TOUR.i], aa=st.pos(lstDeg(new Date(),OBS.lon));
+  panTo={az:aa.az,alt:Math.max(-5,Math.min(89,aa.alt))};
+  $('tourLbl').textContent=(TOUR.i+1)+" of "+n+" · "+st.name;
+  setStatus("Tour · "+st.name+" · "+card16(aa.az)+", "+Math.round(aa.alt)+"° up");
+}
+function startTour(){ autoStatus=false; TOUR.stops=buildTour(); tourGo(0); }
+$('tourPrev').onclick=()=>tourGo(TOUR.i-1);
+$('tourNext').onclick=()=>tourGo(TOUR.i+1);
+$('tourTale').onclick=()=>{ const st=TOUR.stops[TOUR.i]; if(st) st.open(); };
 
 // launch: inside a sandboxed viewer (no sensors) go straight to Sky Map; on a normal https page, open on the Polaris gate
 if(FRAMED){ $('permNote').textContent=BLOCKED_MSG; $('align').classList.add('hidden'); setMode("map"); }
