@@ -78,6 +78,16 @@
   .overlay{position:fixed; inset:0; z-index:40; background:var(--ground); display:flex; flex-direction:column;
     padding:calc(env(safe-area-inset-top) + 20px) 18px env(safe-area-inset-bottom)}
   .hidden{display:none !important}
+  body{position:fixed; inset:0; width:100%}
+  .grab,.sheet-h,#taleTrads,#tradPresets{flex:none}
+  #taleTrads{padding:6px 16px 4px !important}
+  #modes button{height:34px !important; padding:0 10px !important}
+  #top{gap:6px}
+  #toprt{gap:6px !important}
+  .btn.sm{width:38px; height:38px; padding:0; justify-content:center; border-radius:19px; font-size:16px}
+  .btn.sm.onb{background:var(--accent); color:var(--accent-ink); border-color:transparent}
+  #status{left:16px !important; right:auto !important; text-align:left !important; top:calc(env(safe-area-inset-top) + 56px) !important}
+  #status span{background:none !important; color:var(--dim) !important; padding:0 !important; font-size:11px !important; pointer-events:none !important; text-shadow:0 1px 3px var(--ground)}
   .mut{color:var(--dim); font-size:13px; line-height:1.5}
   a{color:var(--accent)}
 </style>
@@ -127,8 +137,10 @@
     <button data-mode="tour">Tour</button>
   </div>
   <div id="toprt">
-    <button class="btn icon" id="btnAlign" aria-label="Align to Polaris">✛</button>
-    <button class="btn icon" id="btnTrad" aria-label="Traditions">☰</button>
+    <button class="btn sm hidden" id="btnLock" aria-label="Lock the view"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></button>
+    <button class="btn sm" id="btnNight" aria-label="Red night mode">☾</button>
+    <button class="btn sm" id="btnAlign" aria-label="Align">✛</button>
+    <button class="btn sm" id="btnTrad" aria-label="Traditions">☰</button>
   </div>
 </div>
 <div id="status"><span id="statusTxt">Point &amp; Lock</span></div>
@@ -144,6 +156,8 @@
   </div>
   <div id="lenses"></div>
 </div>
+
+<button class="btn accent hidden" id="miniStop" style="position:fixed; right:12px; bottom:calc(env(safe-area-inset-bottom) + 70px); z-index:6; height:40px">❚❚ Stop reading</button>
 
 <!-- TALE SHEET -->
 <div class="sheet" id="taleSheet">
@@ -163,6 +177,8 @@
         <h3 id="taleTitle">The Celestial Bear and the Hunters</h3>
         <div class="verified" id="taleStatus">● Verified · well-documented</div>
       </div>
+    </div>
+    <div class="row" style="margin:0 0 10px 54px; gap:7px">
       <button class="chip hidden" id="taleVoice">Voice</button>
       <button class="chip" id="taleRate">1.0×</button>
     </div>
@@ -215,7 +231,7 @@
     return h.map(v=>('00000000'+v.toString(16)).slice(-8)).join('');
   }
   const gate=document.getElementById('gate'), inp=document.getElementById('gateIn'), msg=document.getElementById('gateMsg');
-  const open=()=>{gate.classList.add('hidden');};
+  const open=()=>{ try{inp.blur();}catch(e){} gate.classList.add('hidden'); setTimeout(()=>{try{window.scrollTo(0,0);}catch(e){}},120); };
   try{ if(localStorage.getItem('skylens.pass')===WANT) open(); }catch(e){}
   function tryIt(){ if(sha256("skylens:"+inp.value.trim().toLowerCase())===WANT){ try{localStorage.setItem('skylens.pass',WANT);}catch(e){} open(); }
     else{ msg.textContent="That's not it — try again."; inp.value=''; inp.focus(); } }
@@ -223,12 +239,12 @@
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter') tryIt(); });
 })();
 </script>
-<script src="skydata.js"></script>
-<script src="skycultures.js"></script>
-<script src="handfigs.js"></script>
-<script src="art.js"></script>
-<script src="ephem.js"></script>
-<script src="tales.js"></script>
+<script src="skydata.js?v=14"></script>
+<script src="skycultures.js?v=14"></script>
+<script src="handfigs.js?v=14"></script>
+<script src="art.js?v=14"></script>
+<script src="ephem.js?v=14"></script>
+<script src="tales.js?v=14"></script>
 <script>
 /* ---------- Ursa Major multicultural overlay (verified dataset) ---------- */
 const HIP={Dubhe:54061,Merak:53910,Phecda:58001,Megrez:59774,Alioth:62956,Mizar:65378,Alcor:65477,Alkaid:67301,Arcturus:69673};
@@ -278,7 +294,7 @@ const TRAD={}; TRADITIONS.forEach(t=>TRAD[t.id]=t);
 for(const cid in SC.cultures){const c=SC.cultures[cid]; c.hipFig={}; c.figs.forEach(f=>f.l.forEach(l=>l.forEach(h=>{if(!(h in c.hipFig))c.hipFig[h]=f;})));}
 function lensCult(){const t=TRAD[activeLens]; return (t&&t.cult&&SC.cultures[t.cult])||null;}
 let showGhost=true, showArt=true, focusMode=true, focusKey=null, figColours=true;
-const PAL=["#F2B66D","#7FD1FF","#9BE7A8","#F7A1C4","#C3B1FF","#FF9E80","#E2E36F"], COLMAP={};
+const PAL=["#F2B66D","#7FD1FF","#9BE7A8","#F7A1C4","#C3B1FF","#FF9E80","#E2E36F"], NPAL=["#FF6B5A","#FFC2B8","#C2382E","#FF917F","#FFE0DA","#9E2A23","#E24C40"], COLMAP={};
 // give neighbouring figures different colours (worked out once per lens)
 function figColourMap(lensId,figs){
   if(COLMAP[lensId]) return COLMAP[lensId];
@@ -323,6 +339,12 @@ const CARD16=["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W"
 const card16=az=>CARD16[Math.round(az/22.5)%16];
 const UMA_HIPS=new Set(Object.values(HIP));
 
+/* ---------- iOS: keep the page pinned so touch targets stay under what you see ---------- */
+function pinPage(){ try{window.scrollTo(0,0);document.documentElement.scrollTop=0;document.body.scrollTop=0;}catch(e){} }
+addEventListener('orientationchange',()=>{[60,350,900].forEach(t=>setTimeout(()=>{pinPage();resize();},t));});
+try{ if(window.visualViewport) visualViewport.addEventListener('resize',()=>{pinPage();setTimeout(resize,120);}); }catch(e){}
+document.addEventListener('focusout',()=>setTimeout(pinPage,80));
+addEventListener('pageshow',pinPage);
 /* ---------- astronomy ---------- */
 const D2R=Math.PI/180, R2D=180/Math.PI;
 function julian(d){return d.getTime()/86400000 + 2440587.5;}
@@ -506,7 +528,7 @@ function draw(){
   if(cult) for(const f of cult.figs){ let t=f.v&&f.n?(f.v+" · "+f.n):(f.v||f.n); if(t.length>34)t=f.n||f.v; figs.push({key:f.n+"|"+f.v,name:t,segs:f.l}); }
   else if(mik) figs.push({key:"bear",name:UMA_FIG.mikmaq.label.text,segs:UMA_FIG.mikmaq.lines});
   else for(const c2 of SD.cons) figs.push({key:c2.iau,name:greekName(c2.iau,c2.name),segs:c2.lines.map(seg=>seg.filter(n=>typeof n==="number")),thin:c2.lines.map(seg=>seg[0]==="thin")});
-  const cmap=(figColours&&!nightMode)?figColourMap(activeLens,figs):null; for(const f of figs) f.col=cmap?PAL[cmap[f.key]||0]:accent;
+  const cmap=figColours?figColourMap(activeLens,figs):null; for(const f of figs){ const ci=cmap?(cmap[f.key]||0):0; f.col=cmap?(nightMode?NPAL:PAL)[ci]:accent; f.dash=!!(cmap&&nightMode&&ci%2===1); } // red mode: shades of red, every other figure dashed
   // where each figure sits on screen, and which one the view is aimed at
   const cxs=W/2, cys=Hh/2; let focus=null, fd=1e9, prev=null;
   for(const f of figs){ let sx=0,sy=0,n=0,dmin=1e9; const seen={};
@@ -524,8 +546,8 @@ function draw(){
     for(const c2 of SD.cons) for(const seg of c2.lines) drawSeg(seg.filter(n=>typeof n==="number"), ghost, 1);
     ctx.globalAlpha=1; }
   // lines: the aimed-at figure bright and heavy, the rest held back
-  const drawFig=(f,wd)=>{ f.segs.forEach((l,k)=>{ if(l.length===1){const q=starScreen[l[0]]; if(q){ctx.strokeStyle=f.col;ctx.lineWidth=wd*0.8*DPR;ctx.beginPath();ctx.arc(q.x,q.y,9*DPR,0,7);ctx.stroke();}}
-    else drawSeg(l, f.col, (f.thin&&f.thin[k])?wd*0.6:wd); }); };
+  const drawFig=(f,wd)=>{ if(f.dash)ctx.setLineDash([7*DPR,5*DPR]); f.segs.forEach((l,k)=>{ if(l.length===1){const q=starScreen[l[0]]; if(q){ctx.strokeStyle=f.col;ctx.lineWidth=wd*0.8*DPR;ctx.beginPath();ctx.arc(q.x,q.y,9*DPR,0,7);ctx.stroke();}}
+    else drawSeg(l, f.col, (f.thin&&f.thin[k])?wd*0.6:wd); }); if(f.dash)ctx.setLineDash([]); };
   ctx.globalAlpha=focus?(cmap?.5:.34):.85; for(const f of figs) if(f!==focus && f.n) drawFig(f, focus?1.3:1.7);
   ctx.globalAlpha=1; if(focus) drawFig(focus,2.8);
   // star names: small and grey. The aimed-at figure's named stars get first claim on space; pills then avoid them
@@ -554,9 +576,12 @@ function draw(){
   if((frameN++%8)===0){
     const d=vecAzAlt(B.f), where=CARD8[Math.round(d.az/45)%8]+" · "+Math.round(d.alt)+"° up";
     if(autoStatus){
-      if(MODE==="map") setStatus("Map · "+where+" · drag to look around");
-      else if(MODE==="live" && haveOrient) setStatus(locked?"Locked · "+where+" · tap here to release":"Live · "+where+" · tap here to lock");
+      if(MODE==="map") setStatus("Map · "+where);
+      else if(MODE==="live" && haveOrient) setStatus((locked?"Locked · ":"Live · ")+where);
       else if(MODE==="live") setStatus("No motion data · drag to look around");
+    }
+    document.getElementById('miniStop').classList.toggle('hidden',!(speaking&&!document.getElementById('taleSheet').classList.contains('up')));
+    { const lb=document.getElementById('btnLock'); lb.classList.toggle('hidden',!(MODE==="live"&&haveOrient)); lb.classList.toggle('onb',locked);
     }
     const la=document.getElementById('liveAim');
     if(la && haveOrient && !document.getElementById('align').classList.contains('hidden')) la.textContent="Aimed "+where+" — point at "+(alignTarget==="Polaris"?"Polaris":"the "+alignTarget).replace("the Venus","Venus").replace("the Mars","Mars").replace("the Jupiter","Jupiter").replace("the Saturn","Saturn")+", then tap Align.";
@@ -629,7 +654,9 @@ document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{
   setMode(b.dataset.mode);
 });
 // point & lock: tap the status pill in Live
-$('statusTxt').onclick=()=>{ if(MODE!=="live"||!haveOrient)return; locked=!locked; lockedView=locked?smoothBasis(liveBasis()):null; smB=null; };
+$('btnLock').onclick=()=>{ if(MODE!=="live"||!haveOrient)return; locked=!locked; lockedView=locked?smoothBasis(liveBasis()):null; smB=null; $('btnLock').classList.toggle('onb',locked); };
+function setNight(on){ document.documentElement.classList.toggle('night',on); $('btnNight').classList.toggle('onb',on); const c=$('nightToggle'); if(c) c.checked=on; saveState(); }
+$('btnNight').onclick=()=>setNight(!document.documentElement.classList.contains('night'));
 
 // lenses
 function renderLenses(){const el=$('lenses');el.innerHTML='';
@@ -706,7 +733,7 @@ let curCon="UMa", speaking=false, rate=1.0;
 // "Next tradition" and "Go deeper" on the tale card
 let taleNav=null;
 function setTaleExtras(nav,links){
-  taleNav=nav; $('taleNext').classList.toggle('hidden',!(nav&&nav.ids.length>1));
+  curAudio=null; taleNav=nav; $('taleNext').classList.toggle('hidden',!(nav&&nav.ids.length>1));
   const dl=$('deepList'); dl.classList.add('hidden'); dl.innerHTML=''; $('taleDeep').classList.toggle('hidden',!(links&&links.length)); $('taleDeep').textContent='Go deeper (online)';
   if(links&&links.length){ const n=document.createElement('div'); n.className='pre'; n.style.marginBottom='6px'; n.textContent='SOURCES AND FURTHER READING — open in your browser'; dl.appendChild(n);
     links.forEach(([t,u])=>{const a=document.createElement('a'); a.href=u; a.target='_blank'; a.rel='noopener'; a.textContent=t+' ↗'; a.style.cssText='display:block;padding:9px 0;font-size:14px;border-bottom:1px solid var(--line);text-decoration:none'; dl.appendChild(a);}); }
@@ -745,7 +772,7 @@ function showSubjTale(id){
   const el=$('taleTrads'); el.innerHTML='';
   subjTabs(s).forEach(k=>{const b=document.createElement('button'); b.className='chip'+(k===id?' on':''); b.textContent=(k==="more"?"Other names":TRAD[k].name);
     b.onclick=()=>subjPick(k); el.appendChild(b);});
-  setTaleExtras({ids:subjTabs(s),cur:id,go:subjPick},s.deeper);
+  setTaleExtras({ids:subjTabs(s),cur:id,go:subjPick},s.deeper); curAudio=(id==="more")?null:(s.key+"_"+id); updVoiceChip();
   const on=el.querySelector('.chip.on'); if(on&&on.scrollIntoView){try{on.scrollIntoView({block:'nearest',inline:'center'});}catch(e){}}
   $('taleTitle').textContent=tl.title; $('taleStatus').textContent="● Verified · "+tl.status; $('taleText').textContent=tl.text;
   const nl=$('nameLayer'); nl.innerHTML=''; const T=TRAD[id], cult=T&&T.cult&&SC.cultures[T.cult]; const bits=[];
@@ -807,7 +834,7 @@ function renderTradTabs(){const el=$('taleTrads');el.innerHTML='';
 }
 function umaPick(k){activeLens=k;renderLenses();renderTradTabs();showTradition(k);saveState();}
 function showTradition(id,hip){ const tl=UMA_TALES[id]||UMA_TALES.greek;
-  setTaleExtras({ids:TRADITIONS.filter(t=>t.on&&UMA_TALES[t.id]).map(t=>t.id),cur:(UMA_TALES[id]?id:'greek'),go:umaPick},UMA_DEEPER);
+  setTaleExtras({ids:TRADITIONS.filter(t=>t.on&&UMA_TALES[t.id]).map(t=>t.id),cur:(UMA_TALES[id]?id:'greek'),go:umaPick},UMA_DEEPER); curAudio="uma_"+(UMA_TALES[id]?id:"greek"); updVoiceChip();
   $('taleTitle').textContent=tl.title; $('taleStatus').textContent="● Verified · "+tl.status; $('taleText').textContent=tl.text;
   // name layer
   const nm=UMA_NAMES[id]; const nl=$('nameLayer');
@@ -819,17 +846,19 @@ function showTradition(id,hip){ const tl=UMA_TALES[id]||UMA_TALES.greek;
 $('taleClose').onclick=()=>$('taleSheet').classList.remove('up');
 
 /* ---------- speech: Claude's voice where the viewer offers it, else the best device voice ---------- */
-const canSpeak=('speechSynthesis' in window)&&(typeof SpeechSynthesisUtterance!=='undefined');
+const canSpeak=('speechSynthesis' in window)&&(typeof SpeechSynthesisUtterance!=='undefined'), AUDIO_VER='14';
 let cTTS=null, usingClaude=false, devVoices=[], devVoice=null, speakSeq=0;
+const AUD=new Audio(); AUD.preload='none'; let curAudio=null, usingAudio=false; const audioBad={};
+AUD.addEventListener('ended',()=>{ if(usingAudio){usingAudio=false;speaking=false;$('talePlay').textContent='▶';} });
 try{ if(window.claude&&window.claude.use) window.claude.use('tts').then(t=>{ cTTS=t||null; if(cTTS){ try{cTTS.onState(({state})=>{ if(state==='idle'&&usingClaude){speaking=false;usingClaude=false;$('talePlay').textContent='▶';} });}catch(e){} updVoiceChip(); } }).catch(()=>{}); }catch(e){}
 function rankVoice(v){ const n=v.name||''; let r=0; if(/premium/i.test(n))r+=50; if(/enhanced/i.test(n))r+=40; if(/natural|neural|online/i.test(n))r+=35; if(/siri/i.test(n))r+=30;
   if(/^(Samantha|Daniel|Karen|Moira|Tessa|Serena|Ava|Allison|Evan|Zoe|Google UK English Female|Google US English)/i.test(n))r+=15; if(/eloquence|Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley|Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Wobble|Zarvox|Trinoids|Whisper|Jester|Organ|Superstar|Junior|Ralph|Fred|Kathy/i.test(n))r-=60;
   if(/en-GB|en_GB/.test(v.lang))r+=3; if(v.localService)r+=1; return r; }
 function loadVoices(){ if(!canSpeak)return; try{ devVoices=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang)).sort((a,b)=>rankVoice(b)-rankVoice(a));
   let want=null; try{want=localStorage.getItem('skylens.voice');}catch(e){} devVoice=devVoices.find(v=>v.name===want)||devVoices[0]||null; updVoiceChip(); }catch(e){} }
-function updVoiceChip(){ const c=$('taleVoice'); if(!c)return; c.textContent=cTTS?'Claude voice':(devVoice?devVoice.name.replace(/\s*\(.*?\)\s*/g,' ').trim().slice(0,16):'Voice'); c.classList.toggle('hidden',!cTTS&&devVoices.length<2); }
+function updVoiceChip(){ const c=$('taleVoice'); if(!c)return; c.textContent=cTTS?'Claude voice':(curAudio&&!audioBad[curAudio])?'Recorded voice':(devVoice?devVoice.name.replace(/\s*\(.*?\)\s*/g,' ').trim().slice(0,16):'Voice'); c.classList.toggle('hidden',!cTTS&&!(curAudio&&!audioBad[curAudio])&&devVoices.length<2); }
 if(canSpeak){ loadVoices(); try{speechSynthesis.addEventListener('voiceschanged',loadVoices);}catch(e){} }
-function stopSpeak(){ speakSeq++; try{ if(usingClaude&&cTTS) cTTS.stop(); }catch(e){} try{ if(canSpeak) speechSynthesis.cancel(); }catch(e){} speaking=false; usingClaude=false; $('talePlay').textContent='▶'; }
+function stopSpeak(){ speakSeq++; try{ if(usingClaude&&cTTS) cTTS.stop(); }catch(e){} try{ AUD.pause(); }catch(e){} usingAudio=false; try{ if(canSpeak) speechSynthesis.cancel(); }catch(e){} speaking=false; usingClaude=false; $('talePlay').textContent='▶'; }
 function taleLines(){ return [$('taleTitle').textContent+'.'].concat($('taleText').textContent.split(/\n\s*\n/)).map(t=>t.replace(/[•]/g,'').trim()).filter(Boolean); }
 function startSpeak(){
   const lines=taleLines(), seq=++speakSeq;
@@ -837,18 +866,24 @@ function startSpeak(){
     cTTS.speak(lines.map(t=>({text:t.slice(0,1990),voice:'buttery'})),{rate:Math.max(.7,Math.min(1.5,rate))}).then(()=>{ if(seq===speakSeq){speaking=false;usingClaude=false;$('talePlay').textContent='▶';} })
       .catch(()=>{ if(seq!==speakSeq)return; usingClaude=false; if(canSpeak) deviceSpeak(lines,seq); else {speaking=false;$('talePlay').textContent='▶';} });
     return; }
+  if(curAudio && !audioBad[curAudio]){ // the pre-recorded reading
+    const key=curAudio; usingAudio=true; speaking=true; $('talePlay').textContent='❚❚';
+    const fail=()=>{ if(seq!==speakSeq)return; audioBad[key]=1; usingAudio=false; updVoiceChip(); if(canSpeak) deviceSpeak(lines,seq); else {speaking=false;$('talePlay').textContent='▶';} };
+    try{ AUD.onerror=fail; AUD.src='audio/'+key+'.m4a?v='+AUDIO_VER; AUD.playbackRate=rate; const pr=AUD.play(); if(pr&&pr.catch) pr.catch(fail); }catch(e){fail();}
+    return; }
   if(!canSpeak){$('taleStatus').textContent='● Read-aloud is not available in this viewer';return;}
   deviceSpeak(lines,seq);
 }
 function deviceSpeak(lines,seq){ // one paragraph per utterance: steadier pacing, and long tales don't get cut off
-  try{ speechSynthesis.cancel(); speaking=true; $('talePlay').textContent='❚❚';
+  try{ if(speechSynthesis.speaking||speechSynthesis.pending) speechSynthesis.cancel(); speaking=true; $('talePlay').textContent='❚❚';
     lines.forEach((t,k)=>{ const u=new SpeechSynthesisUtterance(t); if(devVoice){u.voice=devVoice;u.lang=devVoice.lang;} u.rate=rate*0.95; u.pitch=1;
       if(k===lines.length-1) u.onend=()=>{ if(seq===speakSeq){speaking=false;$('talePlay').textContent='▶';} }; speechSynthesis.speak(u); });
   }catch(e){speaking=false;$('talePlay').textContent='▶';$('taleStatus').textContent='● Read-aloud is not available in this viewer';}
 }
 $('talePlay').onclick=()=>{ if(speaking){stopSpeak();return;} startSpeak(); };
-$('taleRate').onclick=()=>{rate=rate>=1.4?0.8:Math.round((rate+0.2)*10)/10; $('taleRate').textContent=rate.toFixed(1)+'×'; if(speaking){stopSpeak();startSpeak();}};
-$('taleVoice').onclick=()=>{ if(cTTS||devVoices.length<2)return; const i=devVoices.indexOf(devVoice); devVoice=devVoices[(i+1)%devVoices.length]; try{localStorage.setItem('skylens.voice',devVoice.name);}catch(e){} updVoiceChip(); if(speaking){stopSpeak();} startSpeak(); };
+$('miniStop').onclick=()=>stopSpeak();
+$('taleRate').onclick=()=>{rate=rate>=1.4?0.8:Math.round((rate+0.2)*10)/10; $('taleRate').textContent=rate.toFixed(1)+'×'; if(usingAudio){try{AUD.playbackRate=rate;}catch(e){}} else if(speaking){stopSpeak();startSpeak();}};
+$('taleVoice').onclick=()=>{ if(cTTS||(curAudio&&!audioBad[curAudio])||devVoices.length<2)return; const i=devVoices.indexOf(devVoice); devVoice=devVoices[(i+1)%devVoices.length]; try{localStorage.setItem('skylens.voice',devVoice.name);}catch(e){} updVoiceChip(); if(speaking){stopSpeak();} startSpeak(); };
 
 /* ---------- traditions sheet ---------- */
 function renderTrad(){const list=$('tradList');list.innerHTML='';
@@ -861,7 +896,7 @@ function renderTrad(){const list=$('tradList');list.innerHTML='';
   g.innerHTML=`<span class="box ${showGhost?'on':''}">${showGhost?'✓':''}</span><span style="flex:1"><b>Greek ghost lines</b><br><span class="star-meta">Faint classical figures behind other traditions, for orientation</span></span>`;
   g.onclick=()=>{showGhost=!showGhost;renderTrad();saveState();}; list.appendChild(g);
   const fc=document.createElement('label');fc.className='tog';
-  fc.innerHTML=`<span class="box ${figColours?'on':''}">${figColours?'✓':''}</span><span style="flex:1"><b>Figure colours</b><br><span class="star-meta">Give neighbouring figures different colours (off in red night mode)</span></span>`;
+  fc.innerHTML=`<span class="box ${figColours?'on':''}">${figColours?'✓':''}</span><span style="flex:1"><b>Figure colours</b><br><span class="star-meta">Give neighbouring figures different colours (shades of red and dashes in night mode)</span></span>`;
   fc.onclick=()=>{figColours=!figColours;renderTrad();saveState();}; list.appendChild(fc);
   const fm=document.createElement('label');fm.className='tog';
   fm.innerHTML=`<span class="box ${focusMode?'on':''}">${focusMode?'✓':''}</span><span style="flex:1"><b>Focus mode</b><br><span class="star-meta">Highlight the figure at the centre of the screen and fade the rest</span></span>`;
@@ -886,8 +921,8 @@ function renderPresets(){const el=$('tradPresets');el.innerHTML='';Object.keys(P
   b.onclick=()=>{const set=new Set(PRESETS[p]);TRADITIONS.forEach(t=>t.on=set.has(t.id));if(!TRADITIONS.some(x=>x.on))TRADITIONS[0].on=true;renderTrad();renderLenses();updCount();saveState();};el.appendChild(b);});}
 $('btnTrad').onclick=()=>{renderTrad();renderPresets();updCount();$('tradSheet').classList.add('up');};
 $('tradClose').onclick=()=>$('tradSheet').classList.remove('up');
-$('nightToggle').onchange=e=>{document.documentElement.classList.toggle('night',e.target.checked);saveState();};
-$('nightToggle').checked=document.documentElement.classList.contains('night');
+$('nightToggle').onchange=e=>setNight(e.target.checked);
+$('nightToggle').checked=document.documentElement.classList.contains('night'); $('btnNight').classList.toggle('onb',$('nightToggle').checked);
 
 /* ---------- tour: a walk through what is well placed right now ---------- */
 let TOUR={stops:[],i:0}, panTo=null;
