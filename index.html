@@ -251,13 +251,13 @@
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter') tryIt(); });
 })();
 </script>
-<script src="skydata.js?v=16"></script>
-<script src="skycultures.js?v=16"></script>
-<script src="handfigs.js?v=16"></script>
-<script src="art.js?v=16"></script>
-<script src="ephem.js?v=16"></script>
-<script src="tales.js?v=16"></script>
-<script src="figtales.js?v=16"></script>
+<script src="skydata.js?v=17"></script>
+<script src="skycultures.js?v=17"></script>
+<script src="handfigs.js?v=17"></script>
+<script src="art.js?v=17"></script>
+<script src="ephem.js?v=17"></script>
+<script src="tales.js?v=17"></script>
+<script src="figtales.js?v=17"></script>
 <script>
 /* ---------- Ursa Major multicultural overlay (verified dataset) ---------- */
 const HIP={Dubhe:54061,Merak:53910,Phecda:58001,Megrez:59774,Alioth:62956,Mizar:65378,Alcor:65477,Alkaid:67301,Arcturus:69673};
@@ -784,7 +784,7 @@ function starLabel(hip){const s=byHip[hip]; return (s&&s[4])?s[4]:("HIP "+hip);}
 function openTaleForHip(hip){
   const cult=lensCult();
   if(UMA_HIPS.has(hip) && UMA_TALES[activeLens]) return openTale("UMa",hip); // the Dipper has full tales
-  if(cult){ const f=cult.hipFig[hip]; if(f){ const sj=SUBJ_FIG[TRAD[activeLens].cult+'|'+f.n]; return sj?openSubject(sj,{fig:f,hip}):openFigure(TRAD[activeLens],cult,f,hip); } }
+  if(cult){ const f=cult.hipFig[hip]; if(f){ const sj=SUBJ_FIG[TRAD[activeLens].cult+'|'+f.n], ftl=window.SKYFIGTALES&&SKYFIGTALES[TRAD[activeLens].cult]&&SKYFIGTALES[TRAD[activeLens].cult][f.n]; return (sj&&(sj.tales[activeLens]||!ftl))?openSubject(sj,{fig:f,hip}):openFigure(TRAD[activeLens],cult,f,hip); } }
   if(SUBJ_HIP[hip]) return openSubject(SUBJ_HIP[hip],{hip});
   const iau=constellationOfHip(hip);
   if(iau) return SUBJ_IAU[iau]?openSubject(SUBJ_IAU[iau],{hip}):openTale(iau,hip);
@@ -844,8 +844,10 @@ function openFigure(T,cult,f,hip){
   $('taleTitle').textContent="A figure of the "+T.name+" sky"; $('taleStatus').textContent=cult.hand?"● Plotted by hand from published identifications":"● Figure verified against Stellarium's sky-culture data";
   let t=""; if(hip!=null&&cult.stars[hip]) t+=starLabel(hip)+" in this tradition: "+cult.stars[hip]+"\n\n"; else if(hip!=null&&byHip[hip]&&byHip[hip][4]) t+="Star tapped: "+byHip[hip][4]+"\n\n";
   const ft=(window.SKYFIGTALES&&SKYFIGTALES[T.cult]&&SKYFIGTALES[T.cult][f.n])||null;
-  if(ft){ curAudio='fig_'+T.cult+'_'+f.n.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); updVoiceChip(); $('taleTitle').textContent=ft.t; $('taleStatus').textContent="● Standard accounts · checked against reference sources"; t+=ft.x; }
+  curAudio=null;
+  if(ft){ if(!ft.n) curAudio='fig_'+T.cult+'_'+f.n.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); $('taleTitle').textContent=ft.t; $('taleStatus').textContent=ft.n?"● Reference note · place and grouping from the star catalogue":"● Standard accounts · checked against reference sources"; t+=ft.x; }
   else t+="The figure and its name are drawn as this tradition maps the sky. Its tale hasn't been written yet — tales are being added constellation by constellation, each checked against sources before it goes in.";
+  updVoiceChip();
   $('taleText').textContent=t;
   const nl=$('nameLayer'); nl.innerHTML=''; const d=document.createElement('div'); d.className='pre'; d.textContent=cult.hand?(cult.credit+". "+cult.lic+"."):("Figure data: "+cult.credit+" · via Stellarium · "+cult.lic); nl.appendChild(d);
   $('taleSheet').classList.add('up');
@@ -887,7 +889,7 @@ function showTradition(id,hip){ const tl=UMA_TALES[id]||UMA_TALES.greek;
 $('taleClose').onclick=()=>$('taleSheet').classList.remove('up');
 
 /* ---------- speech: Claude's voice where the viewer offers it, else the best device voice ---------- */
-const canSpeak=('speechSynthesis' in window)&&(typeof SpeechSynthesisUtterance!=='undefined'), AUDIO_VER='16';
+const canSpeak=('speechSynthesis' in window)&&(typeof SpeechSynthesisUtterance!=='undefined'), AUDIO_VER='17';
 let cTTS=null, usingClaude=false, devVoices=[], devVoice=null, speakSeq=0;
 const AUD=new Audio(); AUD.preload='none'; let curAudio=null, usingAudio=false; const audioBad={};
 AUD.addEventListener('ended',()=>{ if(usingAudio){usingAudio=false;speaking=false;$('talePlay').textContent='▶';} });

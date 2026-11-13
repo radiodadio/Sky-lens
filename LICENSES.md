@@ -41,6 +41,14 @@ Positions use the low-precision method published by Paul Schlyter ("Computing pl
 
 The tale texts are original, written for this app. Facts were checked against the Stellarium sky-culture descriptions and figure data listed above, plus web sources consulted in November 2026: the IAU star-name etymology wiki (Caph, Vega, Wangliang); R. H. Allen's *Star Names* (Cassiopeia); StarDate (Arabic star names, Osiris); Wikipedia's "Inuit astronomy" (drawing on John MacDonald, *The Arctic Sky*) and Inuit Heritage Greenland; Native Skywatchers' Diné booklet and the Heard Museum's Diné labels; Malleefowl Victoria, Museums Victoria and the University of Melbourne on the Boorong sky; *Magyar Néprajz* (mek.oszk.hu) and the Prince Csaba chronicle tradition; World History Encyclopedia on Matariki. Greek, Egyptian, Chinese, Indian, Maya and Aztec tales follow standard reference accounts; where tellings differ, the tale says so.
 
+## Figure tales and notes (`figtales.js`)
+
+Original text written for Sky Lens. Each tale retells standard accounts in new words, drawing on the notes that accompany each Stellarium sky culture and on the sources those notes cite, among them: John MacDonald, *The Arctic Sky* (Inuit); Nancy Maryboy and David Begay (Diné/Navajo); Snorri Sturluson's *Edda* (Norse); Johan Turi and Bo Lundmark (Sámi); Tsimafei Avilin (Belarusian); the Paris Codex and Bernardino de Sahagún (Maya, Aztec); the Polynesian Voyaging Society's star lines (Hawaiian); William Stanbridge, 1857 (Boorong).
+
+Potawatomi entries give names and Western equivalents only, from the Pokagon Band's Neshnabé Nengosêk Kenomagéwen project; the stories belong to that community and are not retold.
+
+Chinese and Japanese entries are short reference notes generated from the catalogue: name, meaning, Western location, and the enclosure or lunar mansion each figure belongs to (for the Chinese set, grouping follows the traditional Three Enclosures and Twenty-Eight Mansions scheme).
+
 ## Constellation artwork (`art/`, `art.js`)
 
 Drawings of the 85 classical figures by Johan Meuris, from Stellarium's "Modern" sky culture, under the Free Art License 1.3 (https://artlibre.org/licence/lal/en/). Changes: converted from grey-on-black to transparent line art, reduced to 320 px and tinted in the app. The modified images remain under the Free Art License.
