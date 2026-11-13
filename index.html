@@ -84,7 +84,9 @@
   #modes button{height:34px !important; padding:0 10px !important}
   #top{gap:6px}
   #toprt{gap:6px !important}
-  .btn.sm{width:38px; height:38px; padding:0; justify-content:center; border-radius:19px; font-size:16px}
+  .btn.sm{width:34px; height:34px; padding:0; justify-content:center; border-radius:17px; font-size:15px; flex:none}
+  #modes button{font-size:12.5px !important; padding:0 8px !important; height:32px !important}
+  #modes{gap:2px !important; padding:3px !important}
   .btn.sm.onb{background:var(--accent); color:var(--accent-ink); border-color:transparent}
   #status{left:16px !important; right:auto !important; text-align:left !important; top:calc(env(safe-area-inset-top) + 56px) !important}
   #status span{background:none !important; color:var(--dim) !important; padding:0 !important; font-size:11px !important; pointer-events:none !important; text-shadow:0 1px 3px var(--ground)}
@@ -123,8 +125,9 @@
     <div style="background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px">
       <div class="mut" id="alignHint"></div>
     </div>
-    <div class="mut" id="liveAim" style="text-align:center">Point at it, then tap Align.</div>
-    <button class="btn accent" id="doAlign" style="height:54px; justify-content:center; font-size:16px; flex:none">Align here</button>
+    <div class="mut" id="liveAim" style="text-align:center">Tap Start: you’ll see the live sky with a ring in the centre. Put the real target in the ring, then tap Lock.</div>
+    <button class="btn accent" id="doAlign" style="height:54px; justify-content:center; font-size:16px; flex:none">Start aligning</button>
+    <button class="btn hidden" id="resetAlign" style="height:42px; justify-content:center; flex:none">Clear the current alignment</button>
     <button class="btn" id="skipAlign" style="height:46px; justify-content:center; flex:none">Skip — I'll use Sky Map</button>
   </div>
 </div>
@@ -138,6 +141,7 @@
   </div>
   <div id="toprt">
     <button class="btn sm hidden" id="btnLock" aria-label="Lock the view"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></button>
+    <button class="btn sm hidden" id="btnGreek" aria-label="Show or hide the Greek constellations" style="font-size:11px; font-weight:700">Gr</button>
     <button class="btn sm" id="btnNight" aria-label="Red night mode">☾</button>
     <button class="btn sm" id="btnAlign" aria-label="Align">✛</button>
     <button class="btn sm" id="btnTrad" aria-label="Traditions">☰</button>
@@ -158,6 +162,14 @@
 </div>
 
 <button class="btn accent hidden" id="miniStop" style="position:fixed; right:12px; bottom:calc(env(safe-area-inset-bottom) + 70px); z-index:6; height:40px">❚❚ Stop reading</button>
+
+<div id="alignBar" class="hidden" style="position:fixed; left:10px; right:10px; bottom:calc(env(safe-area-inset-bottom) + 64px); z-index:8; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:12px">
+  <div id="alignMsg" style="font-size:13.5px; line-height:1.45; margin-bottom:10px"></div>
+  <div class="row" style="gap:8px">
+    <button class="btn" id="alignCancel" style="flex:1; justify-content:center">Cancel</button>
+    <button class="btn accent" id="alignLock" style="flex:2; justify-content:center; font-size:15px">Lock alignment</button>
+  </div>
+</div>
 
 <!-- TALE SHEET -->
 <div class="sheet" id="taleSheet">
@@ -239,12 +251,13 @@
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter') tryIt(); });
 })();
 </script>
-<script src="skydata.js?v=15"></script>
-<script src="skycultures.js?v=15"></script>
-<script src="handfigs.js?v=15"></script>
-<script src="art.js?v=15"></script>
-<script src="ephem.js?v=15"></script>
-<script src="tales.js?v=15"></script>
+<script src="skydata.js?v=16"></script>
+<script src="skycultures.js?v=16"></script>
+<script src="handfigs.js?v=16"></script>
+<script src="art.js?v=16"></script>
+<script src="ephem.js?v=16"></script>
+<script src="tales.js?v=16"></script>
+<script src="figtales.js?v=16"></script>
 <script>
 /* ---------- Ursa Major multicultural overlay (verified dataset) ---------- */
 const HIP={Dubhe:54061,Merak:53910,Phecda:58001,Megrez:59774,Alioth:62956,Mizar:65378,Alcor:65477,Alkaid:67301,Arcturus:69673};
@@ -557,6 +570,13 @@ function draw(){
   const nameBox=st=>({x:st.x+6*DPR,y:st.y-18*DPR,w:ctx.measureText(st.name).width,h:16*DPR});
   const fNames=Object.keys(fstars).map(h=>starScreen[h]).filter(st=>st&&st.name&&st.mag<3.2).sort((a,b)=>a.mag-b.mag), fDraw=[];
   for(const st of fNames){ const bx=nameBox(st); if(hits(bx))continue; placed.push(bx); fDraw.push(st); }
+  if(aligning && MODE==="live"){
+    const t=alignTargetNow(), q=project(dirVec(t.az,t.alt),B,focal), cx0=W/2, cy0=Hh/2;
+    ctx.strokeStyle=accent; ctx.lineWidth=2*DPR; ctx.beginPath(); ctx.arc(cx0,cy0,26*DPR,0,7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx0-40*DPR,cy0); ctx.lineTo(cx0-12*DPR,cy0); ctx.moveTo(cx0+12*DPR,cy0); ctx.lineTo(cx0+40*DPR,cy0); ctx.moveTo(cx0,cy0-40*DPR); ctx.lineTo(cx0,cy0-12*DPR); ctx.moveTo(cx0,cy0+12*DPR); ctx.lineTo(cx0,cy0+40*DPR); ctx.stroke();
+    if(q){ ctx.setLineDash([5*DPR,5*DPR]); ctx.lineWidth=1.4*DPR; ctx.beginPath(); ctx.moveTo(cx0,cy0); ctx.lineTo(q.x,q.y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(q.x,q.y,12*DPR,0,7); ctx.stroke(); ctx.fillStyle=accent; ctx.font=`600 ${12*DPR}px ${FONT}`; ctx.fillText("app’s "+t.id,q.x+16*DPR,q.y+4*DPR); }
+  }
   // figure names: pills at the middle of each figure
   const pill=(t,x,y,strong,col)=>{ ctx.font=`${strong?700:600} ${(strong?13:11)*DPR}px ${FONT}`; const w=ctx.measureText(t).width, ph=(strong?24:19)*DPR, pw=w+(strong?18:14)*DPR, r=ph/2;
     return {x:x-pw/2,y:y-ph/2,w:pw,h:ph,draw(){ const X=this.x,Y=this.y; ctx.beginPath(); ctx.moveTo(X+r,Y); ctx.lineTo(X+pw-r,Y); ctx.arc(X+pw-r,Y+r,r,-Math.PI/2,Math.PI/2); ctx.lineTo(X+r,Y+ph); ctx.arc(X+r,Y+r,r,Math.PI/2,Math.PI*1.5); ctx.closePath();
@@ -580,7 +600,9 @@ function draw(){
       else if(MODE==="live" && haveOrient) setStatus((locked?"Locked · ":"Live · ")+where);
       else if(MODE==="live") setStatus("No motion data · drag to look around");
     }
+    if(aligning) updAlignMsg();
     document.getElementById('miniStop').classList.toggle('hidden',!(speaking&&!document.getElementById('taleSheet').classList.contains('up')));
+    { const gb=document.getElementById('btnGreek'); gb.classList.toggle('hidden',activeLens==="greek"); gb.classList.toggle('onb',showGhost); document.getElementById('btnAlign').classList.toggle('onb',aligned); }
     { const lb=document.getElementById('btnLock'); lb.classList.toggle('hidden',!(MODE==="live"&&haveOrient)); lb.classList.toggle('onb',locked);
     }
     const la=document.getElementById('liveAim');
@@ -593,7 +615,7 @@ function artTinted(iau,night){
   if(!o){ o=ART_IMG[iau]={img:new Image(),ok:false,t:{}}; o.img.onload=()=>{o.ok=true;}; o.img.src=e.f; }
   if(!o.ok) return null; const k=night?'n':'d';
   if(!o.t[k]){ const c=document.createElement('canvas'); c.width=e.s[0]; c.height=e.s[1]; const x=c.getContext('2d');
-    x.drawImage(o.img,0,0,e.s[0],e.s[1]); x.globalCompositeOperation='source-in'; x.fillStyle=night?'#C2473C':'#8FA6DC'; x.fillRect(0,0,c.width,c.height); o.t[k]=c; }
+    x.drawImage(o.img,0,0,e.s[0],e.s[1]); x.globalCompositeOperation='source-in'; x.fillStyle=night?'#F0685C':'#C6D4FF'; x.fillRect(0,0,c.width,c.height); o.t[k]=c; }
   return o.t[k];
 }
 function drawArt(lst,B,focal,night,fkey){
@@ -605,7 +627,7 @@ function drawArt(lst,B,focal,night,fkey){
     const [x1,y1]=e.a[0],[x2,y2]=e.a[1],[x3,y3]=e.a[2], det=x1*(y2-y3)-y1*(x2-x3)+(x2*y3-x3*y2); if(Math.abs(det)<1e-6) continue;
     const sol=(u1,u2,u3)=>[(u1*(y2-y3)+u2*(y3-y1)+u3*(y1-y2))/det,(u1*(x3-x2)+u2*(x1-x3)+u3*(x2-x1))/det,(u1*(x2*y3-x3*y2)+u2*(x3*y1-x1*y3)+u3*(x1*y2-x2*y1))/det];
     const [a,c,e2]=sol(q[0].x,q[1].x,q[2].x), [b,d,f]=sol(q[0].y,q[1].y,q[2].y);
-    ctx.save(); ctx.globalAlpha=(night?.38:.42)*(fkey===undefined?1:(fkey===iau?1.25:(fkey?0.4:0.8))); ctx.setTransform(a,b,c,d,e2,f); ctx.drawImage(im,0,0,e.s[0],e.s[1]); ctx.restore();
+    ctx.save(); ctx.globalAlpha=Math.min(1,(night?.8:.85)*(fkey===undefined?1:(fkey===iau?1.18:(fkey?0.5:0.9)))); ctx.setTransform(a,b,c,d,e2,f); ctx.drawImage(im,0,0,e.s[0],e.s[1]); ctx.restore();
   }
 }
 function conLines(iau){const c=SD.cons.find(x=>x.iau===iau);return c?c.lines:[];}
@@ -646,6 +668,7 @@ function setMode(m){
   document.querySelectorAll('#modes button').forEach(x=>x.classList.toggle('on',x.dataset.mode===m));
   if(MODE==="live" && haveOrient && m!=="live"){ const d=vecAzAlt(viewBasis().f); mapView.az=d.az; mapView.alt=Math.max(-5,Math.min(89,d.alt)); } // keep looking the same way
   MODE=m; locked=false; lockedView=null; smB=null; autoStatus=(m!=="tour"); panTo=null;
+  if(m!=="live"&&typeof aligning!=='undefined'&&aligning){ aligning=false; $('alignBar').classList.add('hidden'); }
   $('tourBar').classList.toggle('hidden',m!=="tour"); $('tourPick').classList.toggle('hidden',m!=="tour");
   if(m==="tour") startTour();
 }
@@ -657,6 +680,7 @@ document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{
 $('btnLock').onclick=()=>{ if(MODE!=="live"||!haveOrient)return; locked=!locked; lockedView=locked?smoothBasis(liveBasis()):null; smB=null; $('btnLock').classList.toggle('onb',locked); };
 function setNight(on){ document.documentElement.classList.toggle('night',on); $('btnNight').classList.toggle('onb',on); const c=$('nightToggle'); if(c) c.checked=on; saveState(); }
 $('btnNight').onclick=()=>setNight(!document.documentElement.classList.contains('night'));
+$('btnGreek').onclick=()=>{ showGhost=!showGhost; $('btnGreek').classList.toggle('onb',showGhost); saveState(); };
 
 // lenses
 function renderLenses(){const el=$('lenses');el.innerHTML='';
@@ -703,6 +727,7 @@ function alignOptions(){
   return o;
 }
 function renderAlignTargets(){
+  $('resetAlign').classList.toggle('hidden',!aligned);
   const o=alignOptions(); if(!o.some(x=>x.id===alignTarget)) alignTarget="Polaris";
   const el=$('alignTargets'); el.innerHTML='';
   o.forEach(t=>{const b=document.createElement('button'); b.className='chip'+(t.id===alignTarget?' on':''); b.textContent=t.id; b.onclick=()=>{alignTarget=t.id;renderAlignTargets();}; el.appendChild(b);});
@@ -716,13 +741,27 @@ function renderAlignTargets(){
 }
 function doAlign(){
   if(!haveOrient){ $('liveAim').textContent=sensorsTried?'No motion data, so there is nothing to align — use Sky Map.':'Tap "Enable motion sensors" first.'; return; }
+  // step 1: go to the live sky with a sighting ring; the correction is only stored when "Lock alignment" is tapped
+  $('align').classList.add('hidden'); setMode("live"); aligning=true; $('alignBar').classList.remove('hidden'); $('alignLock').classList.remove('hidden'); $('alignCancel').textContent='Cancel'; updAlignMsg();
+}
+let aligning=false;
+function alignTargetNow(){ const o=alignOptions(); return o.find(x=>x.id===alignTarget)||o[0]; }
+function tname(id){ return id==="Moon"?"the Moon":id; }
+function updAlignMsg(){ if(!aligning)return; const t=alignTargetNow(), d=vecAzAlt(liveBasis().f);
+  const sep=Math.acos(Math.max(-1,Math.min(1,Math.sin(d.alt*D2R)*Math.sin(t.alt*D2R)+Math.cos(d.alt*D2R)*Math.cos(t.alt*D2R)*Math.cos((d.az-t.az)*D2R))))*R2D;
+  $('alignMsg').textContent="Hold the phone up and put the real "+tname(t.id).replace(/^the /,'')+" inside the centre ring ("+card16(t.az)+", "+Math.round(t.alt)+"° up). The app currently has it "+sep.toFixed(0)+"° away from the ring. Then tap Lock alignment."; }
+function lockAlign(){
   // Where the phone thinks it is aimed (no corrections) vs. where Polaris really is right now.
   const d=vecAzAlt(liveBasis(true).f), opts=alignOptions();
   const t=opts.find(x=>x.id===alignTarget)||opts[0]; // where the chosen target really is right now
-  azOffset=angDiff(t.az,d.az); altOffset=t.alt-d.alt; aligned=true; smB=null;
-  $('align').classList.add('hidden'); setMode("live");
+  azOffset=angDiff(t.az,d.az); altOffset=t.alt-d.alt; aligned=true; smB=null; aligning=false;
+  $('alignMsg').textContent="Alignment locked on "+tname(t.id)+": heading corrected by "+(azOffset>=0?"+":"")+azOffset.toFixed(0)+"°, tilt by "+(altOffset>=0?"+":"")+altOffset.toFixed(0)+"°. It stays until you close the app; tap ✛ to redo or clear it.";
+  $('alignLock').classList.add('hidden'); $('alignCancel').textContent='OK'; setTimeout(()=>{ if(!aligning) $('alignBar').classList.add('hidden'); },6000);
 }
 $('doAlign').onclick=doAlign;
+$('alignLock').onclick=lockAlign;
+$('alignCancel').onclick=()=>{ aligning=false; $('alignBar').classList.add('hidden'); };
+$('resetAlign').onclick=()=>{ azOffset=0; altOffset=0; aligned=false; smB=null; $('resetAlign').classList.add('hidden'); $('liveAim').textContent='Alignment cleared.'; };
 $('alignClose').onclick=()=>{$('align').classList.add('hidden'); if(haveOrient) setMode("live"); else setMode("map");};
 $('skipAlign').onclick=()=>{$('align').classList.add('hidden'); setMode("map");};
 $('btnAlign').onclick=()=>{renderAlignTargets();$('align').classList.remove('hidden');};
@@ -804,7 +843,9 @@ function openFigure(T,cult,f,hip){
   $('taleCon').textContent=f.v||f.n; $('taleSub').textContent=(f.v&&f.n?f.n+" · ":"")+T.name; $('taleTrads').innerHTML='';
   $('taleTitle').textContent="A figure of the "+T.name+" sky"; $('taleStatus').textContent=cult.hand?"● Plotted by hand from published identifications":"● Figure verified against Stellarium's sky-culture data";
   let t=""; if(hip!=null&&cult.stars[hip]) t+=starLabel(hip)+" in this tradition: "+cult.stars[hip]+"\n\n"; else if(hip!=null&&byHip[hip]&&byHip[hip][4]) t+="Star tapped: "+byHip[hip][4]+"\n\n";
-  t+="The figure and its name are drawn as this tradition maps the sky. Its tale hasn't been written yet — tales are being added constellation by constellation, each checked against sources before it goes in.";
+  const ft=(window.SKYFIGTALES&&SKYFIGTALES[T.cult]&&SKYFIGTALES[T.cult][f.n])||null;
+  if(ft){ curAudio='fig_'+T.cult+'_'+f.n.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); updVoiceChip(); $('taleTitle').textContent=ft.t; $('taleStatus').textContent="● Standard accounts · checked against reference sources"; t+=ft.x; }
+  else t+="The figure and its name are drawn as this tradition maps the sky. Its tale hasn't been written yet — tales are being added constellation by constellation, each checked against sources before it goes in.";
   $('taleText').textContent=t;
   const nl=$('nameLayer'); nl.innerHTML=''; const d=document.createElement('div'); d.className='pre'; d.textContent=cult.hand?(cult.credit+". "+cult.lic+"."):("Figure data: "+cult.credit+" · via Stellarium · "+cult.lic); nl.appendChild(d);
   $('taleSheet').classList.add('up');
@@ -846,7 +887,7 @@ function showTradition(id,hip){ const tl=UMA_TALES[id]||UMA_TALES.greek;
 $('taleClose').onclick=()=>$('taleSheet').classList.remove('up');
 
 /* ---------- speech: Claude's voice where the viewer offers it, else the best device voice ---------- */
-const canSpeak=('speechSynthesis' in window)&&(typeof SpeechSynthesisUtterance!=='undefined'), AUDIO_VER='14';
+const canSpeak=('speechSynthesis' in window)&&(typeof SpeechSynthesisUtterance!=='undefined'), AUDIO_VER='16';
 let cTTS=null, usingClaude=false, devVoices=[], devVoice=null, speakSeq=0;
 const AUD=new Audio(); AUD.preload='none'; let curAudio=null, usingAudio=false; const audioBad={};
 AUD.addEventListener('ended',()=>{ if(usingAudio){usingAudio=false;speaking=false;$('talePlay').textContent='▶';} });
