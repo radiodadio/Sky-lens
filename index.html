@@ -239,12 +239,12 @@
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter') tryIt(); });
 })();
 </script>
-<script src="skydata.js?v=14"></script>
-<script src="skycultures.js?v=14"></script>
-<script src="handfigs.js?v=14"></script>
-<script src="art.js?v=14"></script>
-<script src="ephem.js?v=14"></script>
-<script src="tales.js?v=14"></script>
+<script src="skydata.js?v=15"></script>
+<script src="skycultures.js?v=15"></script>
+<script src="handfigs.js?v=15"></script>
+<script src="art.js?v=15"></script>
+<script src="ephem.js?v=15"></script>
+<script src="tales.js?v=15"></script>
 <script>
 /* ---------- Ursa Major multicultural overlay (verified dataset) ---------- */
 const HIP={Dubhe:54061,Merak:53910,Phecda:58001,Megrez:59774,Alioth:62956,Mizar:65378,Alcor:65477,Alkaid:67301,Arcturus:69673};
@@ -279,7 +279,7 @@ const SC=window.SKYCULT||{cultures:{},extra:[]};
 const SH=window.SKYHAND||{cultures:{},extra:[]}, ARTD=window.SKYART||{art:{},extra:[]};
 Object.assign(SC.cultures,SH.cultures); SC.extra=SC.extra.concat(SH.extra||[],ARTD.extra||[]);
 const TRADITIONS=[
- {id:"greek",name:"Greek",sub:"Ptolemy’s 48 in the original Greek · later ones in Latin",group:"Spine",on:true},
+ {id:"greek",name:"Greek",sub:"The 88 classical and modern constellations",group:"Spine",on:true},
  {id:"arabic",name:"Arabic",sub:"Old Arabian star pictures · star names",group:"Spine",on:true,cult:"arabic_hand"},
  {id:"chinese",name:"Chinese",sub:"Three Enclosures & 28 mansions · Běidǒu",group:"Spine",on:true,cult:"chinese"},
  {id:"hindu",name:"Hindu / Vedic",sub:"Nakshatras · Saptarishi, the Seven Sages",group:"Spine",on:true,cult:"indian"},
@@ -315,10 +315,10 @@ function loadState(){try{const st=JSON.parse(localStorage.getItem('skylens.v1')|
   if(st.lens&&TRAD[st.lens]&&TRAD[st.lens].on)activeLens=st.lens; if(typeof st.ghost==='boolean')showGhost=st.ghost;
   if(st.night){document.documentElement.classList.add('night');}}catch(e){}}
 
-// Greek lens names: Ptolemy's constellations in the original Greek; the ones added since 1600 keep their Latin names
-const GREEK={"UMi":["Ἄρκτος Μικρά","Little She-Bear"],"UMa":["Ἄρκτος Μεγάλη","Great She-Bear"],"Dra":["Δράκων","Dragon"],"Cep":["Κηφεύς","Kepheus"],"Boo":["Βοώτης","Ploughman"],"CrB":["Στέφανος","Crown"],"Her":["Ἐν γόνασιν","Kneeler"],"Lyr":["Λύρα","Lyre"],"Cyg":["Ὄρνις","Bird"],"Cas":["Κασσιέπεια","Kassiepeia"],"Per":["Περσεύς","Perseus"],"Aur":["Ἡνίοχος","Charioteer"],"Oph":["Ὀφιοῦχος","Serpent-Holder"],"Ser":["Ὄφις","Serpent"],"Sge":["Ὀϊστός","Arrow"],"Aql":["Ἀετός","Eagle"],"Del":["Δελφίς","Dolphin"],"Equ":["Ἵππου Προτομή","Horse's Bust"],"Peg":["Ἵππος","Horse"],"And":["Ἀνδρομέδα","Andromeda"],"Tri":["Τρίγωνον","Triangle"],"Ari":["Κριός","Ram"],"Tau":["Ταῦρος","Bull"],"Gem":["Δίδυμοι","Twins"],"Cnc":["Καρκίνος","Crab"],"Leo":["Λέων","Lion"],"Vir":["Παρθένος","Maiden"],"Lib":["Χηλαί","Claws"],"Sco":["Σκορπίος","Scorpion"],"Sgr":["Τοξότης","Archer"],"Cap":["Αἰγόκερως","Goat-Horned"],"Aqr":["Ὑδροχόος","Water-Pourer"],"Psc":["Ἰχθύες","Fishes"],"Cet":["Κῆτος","Sea-Monster"],"Ori":["Ὠρίων","Orion"],"Eri":["Ποταμός","River"],"Lep":["Λαγωός","Hare"],"CMa":["Κύων","Dog"],"CMi":["Προκύων","Before the Dog"],"Car":["Ἀργώ","Ship Argo · keel"],"Pup":["Ἀργώ","Ship Argo · stern"],"Vel":["Ἀργώ","Ship Argo · sails"],"Hya":["Ὕδρος","Water-Snake"],"Crt":["Κρατήρ","Mixing-Bowl"],"Crv":["Κόραξ","Raven"],"Cen":["Κένταυρος","Centaur"],"Lup":["Θηρίον","Beast"],"Ara":["Θυμιατήριον","Censer"],"CrA":["Στέφανος Νότιος","Southern Crown"],"PsA":["Ἰχθὺς Νότιος","Southern Fish"],"Com":["Πλόκαμος","Lock of Hair"]};
-const LATIN={"Scl":["Sculptor","Sculptor"],"Sct":["Scutum","Shield"],"Pyx":["Pyxis","Compass"],"Cae":["Caelum","Engraving Tool"],"Cha":["Chamaeleon","Chameleon"],"CVn":["Canes Venatici","Hunting Dogs"],"Col":["Columba","Dove"],"Cir":["Circinus","Compass"],"Cru":["Crux","Southern Cross"],"Dor":["Dorado","Swordfish"],"Nor":["Norma","Carpenter's Square"],"For":["Fornax","Furnace"],"Cam":["Camelopardalis","Giraffe"],"Gru":["Grus","Crane"],"Hor":["Horologium","Clock"],"Hyi":["Hydrus","Male Water Snake"],"Ind":["Indus","Indian"],"Lac":["Lacerta","Lizard"],"Mon":["Monoceros","Unicorn"],"Lyn":["Lynx","Lynx"],"Ant":["Antlia","Air Pump"],"Mic":["Microscopium","Microscope"],"Mus":["Musca","Fly"],"Oct":["Octans","Octant"],"Aps":["Apus","Bird of Paradise"],"Pav":["Pavo","Peacock"],"Pic":["Pictor","Painter's Easel"],"LMi":["Leo Minor","Lesser Lion"],"Vul":["Vulpecula","Fox"],"Phe":["Phoenix","Phoenix"],"Vol":["Volans","Flying Fish"],"Ret":["Reticulum","Reticle"],"Sex":["Sextans","Sextant"],"Men":["Mensa","Table Mountain"],"Tel":["Telescopium","Telescope"],"Tuc":["Tucana","Toucan"],"Tra":["Triangulum Australe","Southern Triangle"]};
-function greekName(iau,fallback){const g=GREEK[iau]||LATIN[iau]; return g?g[0]+" · "+g[1]:fallback;}
+// Greek lens names: the standard Latin constellation names (Ursa Major, Draco, …)
+const GREEK={};
+const LATIN={"Aql":["Aquila","Eagle"],"And":["Andromeda","Chained Maiden"],"Scl":["Sculptor","Sculptor"],"Ara":["Ara","Altar"],"Lib":["Libra","Scales"],"Cet":["Cetus","Sea Monster"],"Ari":["Aries","Ram"],"Sct":["Scutum","Shield"],"Pyx":["Pyxis","Compass"],"Boo":["Bootes","Herdsman"],"Cae":["Caelum","Engraving Tool"],"Cha":["Chamaeleon","Chameleon"],"Cnc":["Cancer","Crab"],"Cap":["Capricornus","Sea Goat"],"Car":["Carina","Keel"],"Cas":["Cassiopeia","Seated Queen"],"Cen":["Centaurus","Centaur"],"Cep":["Cepheus","King"],"Com":["Coma Berenices","Bernice's Hair"],"CVn":["Canes Venatici","Hunting Dogs"],"Aur":["Auriga","Charioteer"],"Col":["Columba","Dove"],"Cir":["Circinus","Compass"],"Crt":["Crater","Cup"],"CrA":["Corona Australis","Southern Crown"],"CrB":["Corona Borealis","Northern Crown"],"Crv":["Corvus","Crow"],"Cru":["Crux","Southern Cross"],"Cyg":["Cygnus","Swan"],"Del":["Delphinus","Dolphin"],"Dor":["Dorado","Swordfish"],"Dra":["Draco","Dragon"],"Nor":["Norma","Carpenter's Square"],"Eri":["Eridanus","River"],"Sge":["Sagitta","Arrow"],"For":["Fornax","Furnace"],"Gem":["Gemini","Twins"],"Cam":["Camelopardalis","Giraffe"],"CMa":["Canis Major","Great Dog"],"UMa":["Ursa Major","Great Bear"],"Gru":["Grus","Crane"],"Her":["Hercules","Hercules"],"Hor":["Horologium","Clock"],"Hya":["Hydra","Female Water Snake"],"Hyi":["Hydrus","Male Water Snake"],"Ind":["Indus","Indian"],"Lac":["Lacerta","Lizard"],"Mon":["Monoceros","Unicorn"],"Lep":["Lepus","Hare"],"Leo":["Leo","Lion"],"Lup":["Lupus","Wolf"],"Lyn":["Lynx","Lynx"],"Lyr":["Lyra","Lyre"],"Ant":["Antlia","Air Pump"],"Mic":["Microscopium","Microscope"],"Mus":["Musca","Fly"],"Oct":["Octans","Octant"],"Aps":["Apus","Bird of Paradise"],"Oph":["Ophiuchus","Serpent Bearer"],"Ori":["Orion","Hunter"],"Pav":["Pavo","Peacock"],"Peg":["Pegasus","Winged Horse"],"Pic":["Pictor","Painter's Easel"],"Per":["Perseus","Hero"],"Equ":["Equuleus","Little Horse"],"CMi":["Canis Minor","Lesser Dog"],"LMi":["Leo Minor","Lesser Lion"],"Vul":["Vulpecula","Fox"],"UMi":["Ursa Minor","Little Bear"],"Phe":["Phoenix","Phoenix"],"Psc":["Pisces","Fishes"],"PsA":["Piscis Austrinus","Southern Fish"],"Vol":["Volans","Flying Fish"],"Pup":["Puppis","Stern"],"Ret":["Reticulum","Reticle"],"Sgr":["Sagittarius","Archer"],"Sco":["Scorpius","Scorpion"],"Ser":["Serpens","Serpent"],"Sex":["Sextans","Sextant"],"Men":["Mensa","Table Mountain"],"Tau":["Taurus","Bull"],"Tel":["Telescopium","Telescope"],"Tuc":["Tucana","Toucan"],"Tri":["Triangulum","Triangle"],"Tra":["Triangulum Australe","Southern Triangle"],"Aqr":["Aquarius","Water Bearer"],"Vir":["Virgo","Maiden"],"Vel":["Vela","Sails"]};
+function greekName(iau,fallback){const g=LATIN[iau]; return g?g[0]:fallback;}
 /* ---------- catalog indexing ---------- */
 const SD=window.SKYDATA;
 const byHip={}; SD.stars.forEach(s=>byHip[s[0]]=s); // [hip,ra,dec,mag,name]
@@ -762,7 +762,7 @@ function subjTabs(s){ let k=Object.keys(s.tales).filter(id=>id==="more"||(TRAD[i
 function openSubject(s,ctx){
   curSubj=s; curCtx=ctx||{}; const T=TRAD[activeLens], f=curCtx.fig;
   if(f){ $('taleCon').textContent=f.v||f.n; $('taleSub').textContent=(f.v&&f.n?f.n+" · ":"")+T.name+" · "+s.name; }
-  else { const gk=(activeLens==="greek"&&s.iau&&s.iau[0])?GREEK[s.iau[0]]:null; $('taleCon').textContent=gk?gk[0]:s.name; $('taleSub').textContent=gk?(s.name+" · "+s.sub):s.sub; }
+  else { const la=(s.iau&&s.iau[0])?LATIN[s.iau[0]]:null; $('taleCon').textContent=la?la[0]:s.name; $('taleSub').textContent=s.sub; }
   const tabs=subjTabs(s); showSubjTale(tabs.includes(activeLens)?activeLens:(tabs.includes("greek")?"greek":tabs[0]));
   $('taleSheet').classList.add('up');
 }
@@ -818,7 +818,7 @@ function openTale(iau,hip){
   }else{
     const c=SD.cons.find(x=>x.iau===iau);
     const gk=GREEK[iau], la=LATIN[iau];
-    $('taleCon').textContent=gk?gk[0]:(la?la[0]:(c?c.name:iau)); $('taleSub').textContent=gk?(gk[1]+" · "+(c?c.name:iau)+" ("+iau+")"):((c?c.name:iau)+" ("+iau+") · a later constellation, named in Latin");
+    $('taleCon').textContent=gk?gk[0]:(la?la[0]:(c?c.name:iau)); $('taleSub').textContent=(c?c.name:iau)+" ("+iau+")";
     $('taleTrads').innerHTML=''; setTaleExtras(null,null);
     $('taleTitle').textContent="Greek / IAU figure";
     $('taleStatus').textContent="● Star names from IAU · fuller tales coming";
@@ -933,7 +933,7 @@ let tourId="best"; const SUBJ_KEY={}; SUBJ.forEach(sj=>SUBJ_KEY[sj.key]=sj);
 function buildTour(){
   const lst=lstDeg(new Date(),OBS.lon), dark=sunAltNow()<-6, stops=[];
   const star=(key)=>{ if(key==="dipper") return {name:"The Big Dipper",hip:HIP.Alioth,open:()=>openTale("UMa")};
-    const sj=SUBJ_KEY[key]; return sj?{name:sj.name,hip:(sj.hips&&sj.hips[0])||brightestOf(sj.iau[0]),open:()=>openSubject(sj,{})}:null; };
+    const sj=SUBJ_KEY[key]; return sj?{name:(sj.iau&&sj.iau[0]&&LATIN[sj.iau[0]])?LATIN[sj.iau[0]][0]:sj.name,hip:(sj.hips&&sj.hips[0])||brightestOf(sj.iau[0]),open:()=>openSubject(sj,{})}:null; };
   const addStar=(c,minAlt,fixed)=>{ if(!c)return; const st=byHip[c.hip]; if(!st)return; const aa=altaz(st[1],st[2],OBS.lat,lst); if(aa.alt<minAlt)return;
     stops.push({name:c.name,alt:aa.alt,key:fixed!=null?fixed:-angDiff(lst,st[1]),pos:l=>altaz(st[1],st[2],OBS.lat,l),open:c.open}); }; // hour angle: west (setting soonest) first
   const addBodies=(minAlt,first)=>{ for(const b of bodiesNow()){ if(b.id==="Sun")continue; if(!dark&&b.id!=="Moon")continue; const aa=bodyAltAz(b,lst); if(aa.alt<minAlt)continue;
