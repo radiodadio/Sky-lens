@@ -381,9 +381,9 @@ function dirVec(azDeg,altDeg){ // world (E,N,U)
 }
 
 /* ---------- observer ---------- */
-let OBS={lat:43.65,lon:-79.38}; // Toronto default
+let OBS={lat:43.65,lon:-79.38,gps:false}; // Toronto default until the phone reports its position
 try{ navigator.geolocation && navigator.geolocation.getCurrentPosition(
-  p=>{OBS.lat=p.coords.latitude;OBS.lon=p.coords.longitude; try{renderAlignTargets();}catch(e){}},
+  p=>{OBS.lat=p.coords.latitude;OBS.lon=p.coords.longitude;OBS.gps=true; try{renderAlignTargets();}catch(e){}},
   ()=>{}, {timeout:8000}); }catch(e){}
 
 /* ---------- orientation ---------- */
@@ -743,6 +743,7 @@ function renderAlignTargets(){
   if(t.id==="Polaris") h="Find Polaris: follow the two Pointer stars (Dubhe → Merak) off the Big Dipper's bowl about five times their gap. It sits almost due north, about "+up+". If trees or buildings hide it, pick the Moon or a bright planet above when one is up.";
   else h=nm+" is now "+up+" in the "+card16(t.az)+". Point the back of the phone straight at it"+(t.id==="Moon"?"":" — it is the bright steady 'star' there that doesn't twinkle")+", then tap Align.";
   if(sunAltNow()>-6) h+=" (It's daytime or bright twilight, so only the Moon can be seen; planets are offered after dark.)";
+  h+=OBS.gps?" Using your phone's location ("+OBS.lat.toFixed(1)+"°N).":" Location not available, so the sky is drawn for Toronto — allow location for this site in Settings › Safari for best accuracy.";
   $('alignHint').textContent=h;
 }
 function doAlign(){
