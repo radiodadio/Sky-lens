@@ -251,13 +251,13 @@
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter') tryIt(); });
 })();
 </script>
-<script src="skydata.js?v=18"></script>
-<script src="skycultures.js?v=18"></script>
-<script src="handfigs.js?v=18"></script>
-<script src="art.js?v=18"></script>
-<script src="ephem.js?v=18"></script>
-<script src="tales.js?v=18"></script>
-<script src="figtales.js?v=18"></script>
+<script src="skydata.js?v=19"></script>
+<script src="skycultures.js?v=19"></script>
+<script src="handfigs.js?v=19"></script>
+<script src="art.js?v=19"></script>
+<script src="ephem.js?v=19"></script>
+<script src="tales.js?v=19"></script>
+<script src="figtales.js?v=19"></script>
 <script>
 /* ---------- Ursa Major multicultural overlay (verified dataset) ---------- */
 const HIP={Dubhe:54061,Merak:53910,Phecda:58001,Megrez:59774,Alioth:62956,Mizar:65378,Alcor:65477,Alkaid:67301,Arcturus:69673};
@@ -410,6 +410,25 @@ function onOrient(e){
   } else if(ios){ rawAlpha=360-e.webkitCompassHeading; }
   else rawAlpha=e.alpha||0;
   haveOrient=true;
+  filterAttitude();
+}
+// The phone reports its attitude as three Euler angles. Near the pose where the camera points at the
+// horizon (beta≈90) those angles are ill-conditioned and iOS can hand over a jumpy or flipped set for a frame
+// or two. Turn each reading into a quaternion (which has no such singularity), drop isolated glitches and smooth.
+let qf=null, qSpike=0;
+function eulerQ(al,be,ga){ const a=al*D2R/2,b=be*D2R/2,g=ga*D2R/2, ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b),cg=Math.cos(g),sg=Math.sin(g);
+  const tw=ca*cb,tx=ca*sb,ty=sa*sb,tz=sa*cb; return [tw*cg-ty*sg, tx*cg-tz*sg, tw*sg+ty*cg, tx*sg+tz*cg]; }
+function filterAttitude(){
+  let q=eulerQ(rawAlpha,rawBeta,rawGamma);
+  if(!qf){ qf=q; return; }
+  let d=qf[0]*q[0]+qf[1]*q[1]+qf[2]*q[2]+qf[3]*q[3]; if(d<0){ q=q.map(x=>-x); d=-d; }
+  const ang=2*Math.acos(Math.min(1,d))*R2D;
+  if(ang>25 && qSpike<4){ qSpike++; return; }        // a real hand can't turn 25° between two sensor events
+  qSpike=0;
+  let k=Math.min(1,0.14+ang/22);                     // calm when still, quick when the phone is swung
+  if(Math.abs(Math.cos(rawBeta*D2R))<0.25 && Math.abs(Math.cos(rawGamma*D2R))>0.9) k*=0.6; // near the Euler singularity
+  const m=[qf[0]+(q[0]-qf[0])*k, qf[1]+(q[1]-qf[1])*k, qf[2]+(q[2]-qf[2])*k, qf[3]+(q[3]-qf[3])*k], l=Math.hypot(...m)||1;
+  qf=m.map(x=>x/l);
 }
 function screenAngle(){ const o=(screen.orientation&&screen.orientation.angle)||window.orientation||0; return o*D2R; }
 function rotZ(v,deg){const t=deg*D2R,c=Math.cos(t),s=Math.sin(t);return [v[0]*c+v[1]*s, -v[0]*s+v[1]*c, v[2]];}
@@ -417,11 +436,10 @@ function vecAzAlt(v){let az=Math.atan2(v[0],v[1])*R2D; if(az<0)az+=360; return {
 // Full camera frame from the device attitude (includes roll, so the sky stays put when the phone twists).
 // R = Rz(a)Rx(b)Ry(g): screen-right = col 1, screen-top = col 2, back camera = -col 3. World = (E,N,U).
 function liveBasis(noOffsets){
-  const a=rawAlpha*D2R, b=rawBeta*D2R, g=rawGamma*D2R;
-  const cA=Math.cos(a),sA=Math.sin(a),cB=Math.cos(b),sB=Math.sin(b),cG=Math.cos(g),sG=Math.sin(g);
-  let r=[cA*cG - sA*sB*sG, sA*cG + cA*sB*sG, -cB*sG];
-  let u=[-cB*sA, cA*cB, sB];
-  let f=[-(cA*sG + cG*sA*sB), -(sA*sG - cA*cG*sB), -(cB*cG)];
+  const q=qf||eulerQ(rawAlpha,rawBeta,rawGamma), w=q[0],x=q[1],y=q[2],z=q[3];
+  let r=[1-2*(y*y+z*z), 2*(x*y+w*z), 2*(x*z-w*y)];
+  let u=[2*(x*y-w*z), 1-2*(x*x+z*z), 2*(y*z+w*x)];
+  let f=[-2*(x*z+w*y), -2*(y*z-w*x), -(1-2*(x*x+y*y))];
   const th=screenAngle();
   if(th){const c=Math.cos(th),s=Math.sin(th);
     const r2=[r[0]*c-u[0]*s, r[1]*c-u[1]*s, r[2]*c-u[2]*s], u2=[u[0]*c+r[0]*s, u[1]*c+r[1]*s, u[2]*c+r[2]*s]; r=r2; u=u2;}
@@ -456,7 +474,7 @@ function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.width=innerW
 addEventListener('resize',resize); resize();
 
 function viewBasis(){
-  if(MODE==="live" && haveOrient){ if(locked && lockedView) return lockedView; return smoothBasis(liveBasis()); }
+  if(MODE==="live" && haveOrient){ if(locked && lockedView) return lockedView; return liveBasis(); }
   return basis(mapView);
 }
 // camera basis from center dir
@@ -546,7 +564,7 @@ function draw(){
   if(!focusMode || !focus || focus.d>Hh*0.3) focus=null;   // nothing near the centre: no figure is singled out
   focusKey=focus?focus.key:null;
   // constellation artwork behind the Greek figures
-  if(showArt && activeLens==="greek") drawArt(lst,B,focal,nightMode,focusMode?focusKey:undefined);
+  if(showArt && activeLens==="greek" && !(aligning&&MODE==="live")) drawArt(lst,B,focal,nightMode,focusMode?focusKey:undefined);
   // Greek sky as faint ghost lines behind another tradition's figures
   if(under && showGhost){ ctx.globalAlpha=focus?.3:.5;
     for(const c2 of SD.cons) for(const seg of c2.lines) drawSeg(seg.filter(n=>typeof n==="number"), ghost, 1);
@@ -554,7 +572,7 @@ function draw(){
   // lines: the aimed-at figure bright and heavy, the rest held back
   const drawFig=(f,wd)=>{ if(f.dash)ctx.setLineDash([7*DPR,5*DPR]); f.segs.forEach((l,k)=>{ if(l.length===1){const q=starScreen[l[0]]; if(q){ctx.strokeStyle=f.col;ctx.lineWidth=wd*0.8*DPR;ctx.beginPath();ctx.arc(q.x,q.y,9*DPR,0,7);ctx.stroke();}}
     else drawSeg(l, f.col, (f.thin&&f.thin[k])?wd*0.6:wd); }); if(f.dash)ctx.setLineDash([]); };
-  ctx.globalAlpha=focus?(cmap?.5:.34):.85; for(const f of figs) if(f!==focus && f.n) drawFig(f, focus?1.3:1.7);
+  ctx.globalAlpha=aligning&&MODE==="live"?.25:(focus?(cmap?.5:.34):.85); for(const f of figs) if(f!==focus && f.n) drawFig(f, focus?1.3:1.7);
   ctx.globalAlpha=1; if(focus) drawFig(focus,2.8);
   // star names: small and grey. The aimed-at figure's named stars get first claim on space; pills then avoid them
   const fstars={}; if(focus) for(const l of focus.segs) for(const h of l) fstars[h]=1;
@@ -563,13 +581,6 @@ function draw(){
   const nameBox=st=>({x:st.x+6*DPR,y:st.y-18*DPR,w:ctx.measureText(st.name).width,h:16*DPR});
   const fNames=Object.keys(fstars).map(h=>starScreen[h]).filter(st=>st&&st.name&&st.mag<3.2).sort((a,b)=>a.mag-b.mag), fDraw=[];
   for(const st of fNames){ const bx=nameBox(st); if(hits(bx))continue; placed.push(bx); fDraw.push(st); }
-  if(aligning && MODE==="live"){
-    const t=alignTargetNow(), q=project(dirVec(t.az,t.alt),B,focal), cx0=W/2, cy0=Hh/2;
-    ctx.strokeStyle=accent; ctx.lineWidth=2*DPR; ctx.beginPath(); ctx.arc(cx0,cy0,26*DPR,0,7); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx0-40*DPR,cy0); ctx.lineTo(cx0-12*DPR,cy0); ctx.moveTo(cx0+12*DPR,cy0); ctx.lineTo(cx0+40*DPR,cy0); ctx.moveTo(cx0,cy0-40*DPR); ctx.lineTo(cx0,cy0-12*DPR); ctx.moveTo(cx0,cy0+12*DPR); ctx.lineTo(cx0,cy0+40*DPR); ctx.stroke();
-    if(q){ ctx.setLineDash([5*DPR,5*DPR]); ctx.lineWidth=1.4*DPR; ctx.beginPath(); ctx.moveTo(cx0,cy0); ctx.lineTo(q.x,q.y); ctx.stroke(); ctx.setLineDash([]);
-      ctx.beginPath(); ctx.arc(q.x,q.y,12*DPR,0,7); ctx.stroke(); ctx.fillStyle=accent; ctx.font=`600 ${12*DPR}px ${FONT}`; ctx.fillText("app’s "+t.id,q.x+16*DPR,q.y+4*DPR); }
-  }
   // figure names: pills at the middle of each figure
   const pill=(t,x,y,strong,col)=>{ ctx.font=`${strong?700:600} ${(strong?13:11)*DPR}px ${FONT}`; const w=ctx.measureText(t).width, ph=(strong?24:19)*DPR, pw=w+(strong?18:14)*DPR, r=ph/2;
     return {x:x-pw/2,y:y-ph/2,w:pw,h:ph,draw(){ const X=this.x,Y=this.y; ctx.beginPath(); ctx.moveTo(X+r,Y); ctx.lineTo(X+pw-r,Y); ctx.arc(X+pw-r,Y+r,r,-Math.PI/2,Math.PI/2); ctx.lineTo(X+r,Y+ph); ctx.arc(X+r,Y+r,r,Math.PI/2,Math.PI*1.5); ctx.closePath();
@@ -579,12 +590,14 @@ function draw(){
   const clampX=(o)=>{o.x=Math.max(6*DPR,Math.min(W-o.w-6*DPR,o.x));return o;};
   let fp=null; if(focus){ for(const dy of [20,-24,46,-50,72,-76,20]){ fp=clampX(pill(focus.name,focus.cx,focus.cy+dy*DPR,true,focus.col)); if(!hits(fp))break; } placed.push(fp); }
   const rest=figs.filter(f=>f!==focus&&f.n).sort((a,b)=>a.d-b.d); let shown=0;
-  for(const f of rest){ if(shown>=(focus?12:16))break; const o=clampX(pill(f.name,f.cx,f.cy+16*DPR,false,f.col)); if(hits(o))continue; placed.push(o); o.draw(); shown++; }
-  if(fp) fp.draw();
+  const alg=aligning&&MODE==="live";
+  for(const f of rest){ if(alg||shown>=(focus?12:16))break; const o=clampX(pill(f.name,f.cx,f.cy+16*DPR,false,f.col)); if(hits(o))continue; placed.push(o); o.draw(); shown++; }
+  if(fp&&!alg) fp.draw();
   ctx.font=`500 ${10*DPR}px ${FONT}`; ctx.fillStyle=dim;
-  ctx.globalAlpha=.95; for(const st of fDraw) ctx.fillText(st.name,st.x+6*DPR,st.y-6*DPR);
+  ctx.globalAlpha=.95; for(const st of fDraw){ if(aligning&&MODE==="live"&&st===starScreen[11767])continue; ctx.fillText(st.name,st.x+6*DPR,st.y-6*DPR);}
   ctx.globalAlpha=.5; for(const hip in starScreen){const st=starScreen[hip]; if(!st.name||st.mag>=1.3||fstars[hip])continue; const bx=nameBox(st); if(hits(bx))continue; ctx.fillText(st.name,st.x+6*DPR,st.y-6*DPR);}
   ctx.globalAlpha=1;
+  if(aligning && MODE==="live") drawAlignGuide(B,focal,lst,accent,accentInk,FONT,nightMode);
   // live read-out of where the view is aimed
   if((frameN++%8)===0){
     const d=vecAzAlt(B.f), where=CARD8[Math.round(d.az/45)%8]+" · "+Math.round(d.alt)+"° up";
@@ -738,11 +751,61 @@ function doAlign(){
   $('align').classList.add('hidden'); setMode("live"); aligning=true; $('alignBar').classList.remove('hidden'); $('alignLock').classList.remove('hidden'); $('alignCancel').textContent='Cancel'; updAlignMsg();
 }
 let aligning=false;
+// Sighting guide drawn while aligning: the Dipper stick figures and pointer line, a big pulsing marker on the
+// target with a label on a solid backing, and an edge arrow when the target is off screen.
+const UMI_LINES=[[11767,85822],[85822,82080],[82080,77055],[77055,79822],[79822,72607],[72607,75097],[75097,77055]];
+const UMA_LINES=[[54061,53910],[53910,58001],[58001,59774],[59774,54061],[59774,62956],[62956,65378],[65378,67301]];
+function drawAlignGuide(B,focal,lst,accent,ink,FONT,night){
+  const t=alignTargetNow(), tv=dirVec(t.az,t.alt), q=project(tv,B,focal), cx0=W/2, cy0=Hh/2, pulse=0.5+0.5*Math.sin(performance.now()/260);
+  const halo=night?'rgba(255,90,70,':'rgba(255,214,120,', dark='rgba(0,0,0,.65)';
+  const P=(h)=>{const st=byHip[h]; if(!st)return null; const aa=altaz(st[1],st[2],OBS.lat,lst); return project(dirVec(aa.az,aa.alt),B,focal);};
+  const line=(a,b)=>{ if(!a||!b)return; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); };
+  if(t.id==="Polaris"){
+    // the two Dippers in bold, and the pointer line from Merak through Dubhe on to Polaris
+    ctx.lineCap='round';
+    for(const [L,wd] of [[UMA_LINES,2.6],[UMI_LINES,2.6]]){ ctx.strokeStyle=dark; ctx.lineWidth=(wd+2.4)*DPR; for(const [a,b] of L) line(P(a),P(b)); ctx.strokeStyle=accent; ctx.lineWidth=wd*DPR; for(const [a,b] of L) line(P(a),P(b)); }
+    const mer=P(53910), dub=P(54061), pol=P(11767);
+    if(dub&&pol){ ctx.setLineDash([9*DPR,7*DPR]); ctx.strokeStyle=accent; ctx.lineWidth=2*DPR; line(mer||dub,pol); ctx.setLineDash([]); }
+    else if(mer&&dub){ ctx.setLineDash([9*DPR,7*DPR]); ctx.strokeStyle=accent; ctx.lineWidth=2*DPR; const dx=dub.x-mer.x, dy=dub.y-mer.y; line(dub,{x:dub.x+dx*5,y:dub.y+dy*5}); ctx.setLineDash([]); }
+    ctx.font=`600 ${11*DPR}px ${FONT}`; ctx.fillStyle=accent;
+    if(dub) ctx.fillText("Dubhe",dub.x+8*DPR,dub.y-8*DPR); if(mer) ctx.fillText("Merak",mer.x+8*DPR,mer.y+14*DPR);
+    ctx.lineCap='butt';
+  }
+  // centre sighting ring
+  ctx.strokeStyle=dark; ctx.lineWidth=5*DPR; ctx.beginPath(); ctx.arc(cx0,cy0,26*DPR,0,7); ctx.stroke();
+  ctx.strokeStyle=accent; ctx.lineWidth=2.4*DPR; ctx.beginPath(); ctx.arc(cx0,cy0,26*DPR,0,7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx0-42*DPR,cy0); ctx.lineTo(cx0-14*DPR,cy0); ctx.moveTo(cx0+14*DPR,cy0); ctx.lineTo(cx0+42*DPR,cy0); ctx.moveTo(cx0,cy0-42*DPR); ctx.lineTo(cx0,cy0-14*DPR); ctx.moveTo(cx0,cy0+14*DPR); ctx.lineTo(cx0,cy0+42*DPR); ctx.stroke();
+  const onScreen=q&&q.x>24*DPR&&q.x<W-24*DPR&&q.y>60*DPR&&q.y<Hh-200*DPR;
+  if(onScreen){
+    ctx.setLineDash([5*DPR,5*DPR]); ctx.strokeStyle=accent; ctx.lineWidth=1.6*DPR; ctx.beginPath(); ctx.moveTo(cx0,cy0); ctx.lineTo(q.x,q.y); ctx.stroke(); ctx.setLineDash([]);
+    const g=ctx.createRadialGradient(q.x,q.y,0,q.x,q.y,34*DPR); g.addColorStop(0,halo+'.55)'); g.addColorStop(1,halo+'0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(q.x,q.y,34*DPR,0,7); ctx.fill();
+    const rr=(16+6*pulse)*DPR;
+    ctx.strokeStyle=dark; ctx.lineWidth=6*DPR; ctx.beginPath(); ctx.arc(q.x,q.y,rr,0,7); ctx.stroke();
+    ctx.strokeStyle=accent; ctx.lineWidth=3*DPR; ctx.beginPath(); ctx.arc(q.x,q.y,rr,0,7); ctx.stroke();
+    ctx.fillStyle=night?'#FFD9D2':'#FFFFFF'; ctx.beginPath(); ctx.arc(q.x,q.y,4.5*DPR,0,7); ctx.fill();
+    const lab=t.id+" — put this in the ring"; ctx.font=`700 ${14*DPR}px ${FONT}`; const tw=ctx.measureText(lab).width, bx=Math.max(8*DPR,Math.min(W-tw-24*DPR,q.x-tw/2-8*DPR)), by=q.y+rr+10*DPR;
+    ctx.fillStyle=accent; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(bx,by,tw+16*DPR,24*DPR,12*DPR); else ctx.rect(bx,by,tw+16*DPR,24*DPR); ctx.fill();
+    ctx.fillStyle=ink; ctx.fillText(lab,bx+8*DPR,by+17*DPR);
+  } else {
+    // off screen: an arrow at the edge pointing the way, with how far to turn
+    const x=tv[0]*B.r[0]+tv[1]*B.r[1]+tv[2]*B.r[2], y=tv[0]*B.u[0]+tv[1]*B.u[1]+tv[2]*B.u[2], z=tv[0]*B.f[0]+tv[1]*B.f[1]+tv[2]*B.f[2];
+    const sep=Math.acos(Math.max(-1,Math.min(1,z)))*R2D; let ax=x, ay=-y; const L=Math.hypot(ax,ay)||1; ax/=L; ay/=L;
+    const mx=W/2-46*DPR, my=Hh/2-150*DPR, s2=Math.min(mx/Math.abs(ax||1e-6), my/Math.abs(ay||1e-6)), px=cx0+ax*s2, py=cy0+ay*s2;
+    ctx.save(); ctx.translate(px,py); ctx.rotate(Math.atan2(ay,ax));
+    ctx.fillStyle=dark; ctx.beginPath(); ctx.moveTo(26*DPR,0); ctx.lineTo(-14*DPR,-18*DPR); ctx.lineTo(-14*DPR,18*DPR); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=accent; ctx.beginPath(); ctx.moveTo(22*DPR,0); ctx.lineTo(-10*DPR,-14*DPR); ctx.lineTo(-10*DPR,14*DPR); ctx.closePath(); ctx.fill(); ctx.restore();
+    const lab=t.id+" "+Math.round(sep)+"° this way"; ctx.font=`700 ${14*DPR}px ${FONT}`; const tw=ctx.measureText(lab).width;
+    const bx=Math.max(8*DPR,Math.min(W-tw-24*DPR,px-ax*40*DPR-tw/2-8*DPR)), by=Math.max(56*DPR,Math.min(Hh-230*DPR,py-ay*40*DPR-12*DPR));
+    ctx.fillStyle=accent; ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(bx,by,tw+16*DPR,24*DPR,12*DPR); else ctx.rect(bx,by,tw+16*DPR,24*DPR); ctx.fill();
+    ctx.fillStyle=ink; ctx.fillText(lab,bx+8*DPR,by+17*DPR);
+  }
+}
 function alignTargetNow(){ const o=alignOptions(); return o.find(x=>x.id===alignTarget)||o[0]; }
 function tname(id){ return id==="Moon"?"the Moon":id; }
 function updAlignMsg(){ if(!aligning)return; const t=alignTargetNow(), d=vecAzAlt(liveBasis().f);
   const sep=Math.acos(Math.max(-1,Math.min(1,Math.sin(d.alt*D2R)*Math.sin(t.alt*D2R)+Math.cos(d.alt*D2R)*Math.cos(t.alt*D2R)*Math.cos((d.az-t.az)*D2R))))*R2D;
-  $('alignMsg').textContent="Hold the phone up and put the real "+tname(t.id).replace(/^the /,'')+" inside the centre ring ("+card16(t.az)+", "+Math.round(t.alt)+"° up). The app currently has it "+sep.toFixed(0)+"° away from the ring. Then tap Lock alignment."; }
+  $('alignMsg').textContent="Put the real "+tname(t.id).replace(/^the /,'')+" in the centre ring ("+card16(t.az)+", "+Math.round(t.alt)+"° up), then tap Lock. The app's marker is "+sep.toFixed(0)+"° from the ring."; }
 function lockAlign(){
   // Where the phone thinks it is aimed (no corrections) vs. where Polaris really is right now.
   const d=vecAzAlt(liveBasis(true).f), opts=alignOptions();
