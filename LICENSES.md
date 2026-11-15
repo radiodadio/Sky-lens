@@ -80,7 +80,7 @@ Figures from the Ulugh Beg copy of ʿAbd al-Raḥmān al-Ṣūfī's *Book of Fix
 
 ### Drawings made for Sky Lens (`art/claude/`, shown in green)
 
-95 line drawings made by Claude (Anthropic's AI model) for this app in November 2026: Egyptian, Norse, Sámi, Navajo, Arabic, Hungarian, Anishinaabe/Ojibwe, Lakota, Haudenosaunee, Cherokee, Welsh, Hebrew and Mi'kmaq figures. They are new drawings, not traditional artwork: each one is drawn over the figure's own stars from the figure's name and published descriptions. They copy no published star map. Figures of one star, or of a tight group like the Pleiades, are drawn larger than their stars so they can be seen. They are shown in green by day so you can tell them from traditional artwork.
+126 line drawings made by Claude (Anthropic's AI model) for this app in November 2026: Egyptian, Norse, Sámi, Navajo, Arabic, Hungarian, Anishinaabe/Ojibwe, Lakota, Haudenosaunee, Cherokee, Welsh, Hebrew and Mi'kmaq figures, plus the Chinese 28 lunar mansions, the Northern Dipper, the Weaving Girl and the Herd Boy (Drum at the River). The same Chinese drawings are reused for the matching Japanese figures. They are new drawings, not traditional artwork: each one is drawn over the figure's own stars from the figure's name and published descriptions. They copy no published star map. Figures of one star, or of a tight group like the Pleiades, are drawn larger than their stars so they can be seen. They are shown in green by day so you can tell them from traditional artwork.
 
 ## Hand-plotted figure sets (`handfigs.js`)
 
