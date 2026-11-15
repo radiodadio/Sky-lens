@@ -564,7 +564,7 @@ function draw(){
   if(!focusMode || !focus || focus.d>Hh*0.3) focus=null;   // nothing near the centre: no figure is singled out
   focusKey=focus?focus.key:null;
   // constellation artwork behind the Greek figures
-  if(showArt && activeLens==="greek" && !(aligning&&MODE==="live")) drawArt(lst,B,focal,nightMode,focusMode?focusKey:undefined);
+  if(showArt && !(aligning&&MODE==="live")){ const ae=artEntries(); if(ae.length) drawArt(ae,lst,B,focal,nightMode,focusMode?focusKey:undefined); }
   // Greek sky as faint ghost lines behind another tradition's figures
   if(under && showGhost){ ctx.globalAlpha=focus?.3:.5;
     for(const c2 of SD.cons) for(const seg of c2.lines) drawSeg(seg.filter(n=>typeof n==="number"), ghost, 1);
@@ -616,24 +616,32 @@ function draw(){
   }
 }
 const ART_IMG={};
-function artTinted(iau,night){
-  let o=ART_IMG[iau]; const e=ARTD.art[iau];
-  if(!o){ o=ART_IMG[iau]={img:new Image(),ok:false,t:{}}; o.img.onload=()=>{o.ok=true;}; o.img.src=e.f; }
+// artwork for the active lens: Greek uses the classical drawings; other traditions use their own illustrations where Stellarium has them
+function artEntries(){
+  if(activeLens==="greek") return Object.keys(ARTD.art).map(iau=>({id:iau,key:iau,e:ARTD.art[iau]}));
+  const t=TRAD[activeLens], L=t&&t.cult&&ARTD.cult&&ARTD.cult[t.cult];
+  return L?L.map((e,i)=>({id:t.cult+":"+i,key:e.k,e})):[];
+}
+function artTinted(id,e,night){
+  let o=ART_IMG[id];
+  if(!o){ o=ART_IMG[id]={img:new Image(),ok:false,t:{}}; o.img.onload=()=>{o.ok=true;}; o.img.src=e.f; }
   if(!o.ok) return null; const k=night?'n':'d';
   if(!o.t[k]){ const c=document.createElement('canvas'); c.width=e.s[0]; c.height=e.s[1]; const x=c.getContext('2d');
-    x.drawImage(o.img,0,0,e.s[0],e.s[1]); x.globalCompositeOperation='source-in'; x.fillStyle=night?'#F0685C':'#C6D4FF'; x.fillRect(0,0,c.width,c.height); o.t[k]=c; }
+    x.drawImage(o.img,0,0,e.s[0],e.s[1]);
+    if(night||!e.c){ x.globalCompositeOperation='source-in'; x.fillStyle=night?'#F0685C':'#C6D4FF'; x.fillRect(0,0,c.width,c.height); } // coloured drawings keep their colours by day
+    o.t[k]=c; }
   return o.t[k];
 }
-function drawArt(lst,B,focal,night,fkey){
-  for(const iau in ARTD.art){ const e=ARTD.art[iau], q=[]; let ok=true, near=false;
+function drawArt(list,lst,B,focal,night,fkey){
+  for(const it of list){ const e=it.e, q=[]; let ok=true, near=false;
     for(const a of e.a){ const st=byHip[a[2]]; if(!st){ok=false;break;} const aa=altaz(st[1],st[2],OBS.lat,lst), p=project(dirVec(aa.az,aa.alt),B,focal);
       if(!p||p.z<0.25){ok=false;break;} q.push(p); if(p.x>-W*0.4&&p.x<W*1.4&&p.y>-Hh*0.4&&p.y<Hh*1.4) near=true; }
     if(!ok||!near) continue;
-    const im=artTinted(iau,night); if(!im) continue;
+    const im=artTinted(it.id,e,night); if(!im) continue;
     const [x1,y1]=e.a[0],[x2,y2]=e.a[1],[x3,y3]=e.a[2], det=x1*(y2-y3)-y1*(x2-x3)+(x2*y3-x3*y2); if(Math.abs(det)<1e-6) continue;
     const sol=(u1,u2,u3)=>[(u1*(y2-y3)+u2*(y3-y1)+u3*(y1-y2))/det,(u1*(x3-x2)+u2*(x1-x3)+u3*(x2-x1))/det,(u1*(x2*y3-x3*y2)+u2*(x3*y1-x1*y3)+u3*(x1*y2-x2*y1))/det];
     const [a,c,e2]=sol(q[0].x,q[1].x,q[2].x), [b,d,f]=sol(q[0].y,q[1].y,q[2].y);
-    ctx.save(); ctx.globalAlpha=Math.min(1,(night?.8:.85)*(fkey===undefined?1:(fkey===iau?1.18:(fkey?0.5:0.9)))); ctx.setTransform(a,b,c,d,e2,f); ctx.drawImage(im,0,0,e.s[0],e.s[1]); ctx.restore();
+    ctx.save(); ctx.globalAlpha=Math.min(1,(night?.8:.85)*(e.o||1)*(fkey===undefined?1:(it.key&&fkey===it.key?1.18:(fkey?0.5:0.9)))); ctx.setTransform(a,b,c,d,e2,f); ctx.drawImage(im,0,0,e.s[0],e.s[1]); ctx.restore(); // e.o: solid drawings are held back so stars show through
   }
 }
 function conLines(iau){const c=SD.cons.find(x=>x.iau===iau);return c?c.lines:[];}
@@ -1002,7 +1010,7 @@ function renderTrad(){const list=$('tradList');list.innerHTML='';
   fm.innerHTML=`<span class="box ${focusMode?'on':''}">${focusMode?'✓':''}</span><span style="flex:1"><b>Focus mode</b><br><span class="star-meta">Highlight the figure at the centre of the screen and fade the rest</span></span>`;
   fm.onclick=()=>{focusMode=!focusMode;renderTrad();saveState();}; list.appendChild(fm);
   const a=document.createElement('label');a.className='tog';
-  a.innerHTML=`<span class="box ${showArt?'on':''}">${showArt?'✓':''}</span><span style="flex:1"><b>Constellation artwork</b><br><span class="star-meta">Drawings behind the Greek figures (Greek lens)</span></span>`;
+  a.innerHTML=`<span class="box ${showArt?'on':''}">${showArt?'✓':''}</span><span style="flex:1"><b>Constellation artwork</b><br><span class="star-meta">Drawings behind the figures — Greek, plus Aztec, Belarusian, Boorong, Hawaiian, Inuit and Northern Andes</span></span>`;
   a.onclick=()=>{showArt=!showArt;renderTrad();saveState();}; list.appendChild(a);
   const note=document.createElement('div');note.className='mut';note.style.margin='10px 4px';
   note.textContent='Each lens redraws the sky with that tradition’s own figures and names. Most sets come from Stellarium’s sky-culture data; Arabic, Hungarian, Anishinaabe, Lakota, Haudenosaunee, Cherokee, Welsh and Hebrew were plotted by hand from published identifications and are simpler. Full tales so far: the Big Dipper, Cassiopeia, Cygnus, Lyra, Aquila, the Pleiades and Orion.';
@@ -1012,7 +1020,7 @@ function renderTrad(){const list=$('tradList');list.innerHTML='';
   for(const cid in SC.cultures){const c=SC.cultures[cid]; if(c.hand)continue; h+='• '+c.name.replace(/</g,'&lt;')+' — '+c.credit.replace(/</g,'&lt;')+' ('+c.lic+')<br>';}
   h+='<br>PLOTTED BY HAND for Sky Lens from published identifications:<br>';
   for(const cid in SC.cultures){const c=SC.cultures[cid]; if(!c.hand)continue; h+='• '+c.name.replace(/</g,'&lt;')+' — '+c.credit.replace(/</g,'&lt;')+'<br>';}
-  h+='<br>ARTWORK — constellation drawings by Johan Meuris, from Stellarium (Free Art License 1.3), converted to transparent line art.<br>';
+  h+='<br>ARTWORK — classical constellation drawings by Johan Meuris, from Stellarium (Free Art License 1.3), converted to transparent line art. Other traditions\' drawings from the Stellarium sky cultures: Aztec (Enrique Gómez Candelario et al., GPL v2), Belarusian and Inuit (Johan Meuris, Free Art License 1.3), Boorong (John Morieson & Alex Cherney, CC BY-SA 4.0), Hawaiian star lines (Kealoha Kaneakua, rev. Susanne M. Hoffmann, CC BY-SA 4.0), Northern Andes (after Pasto designs researched by Estelina Quinatoa, GPL v2).<br>';
   cr.innerHTML=h; list.appendChild(cr);
 }
 function updCount(){$('tradCount').textContent=TRADITIONS.filter(t=>t.on).length+' of '+TRADITIONS.length+' on';}

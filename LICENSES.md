@@ -5,7 +5,7 @@ Sky Lens is a personal, non-commercial project.
 ## Sky-culture figures (`skycultures.js`)
 
 Adapted from the [Stellarium sky cultures collection](https://github.com/Stellarium/stellarium/tree/master/skycultures).
-Changes made: each culture was reduced to its line figures and names and converted to this app's format; illustrations and descriptions are not included.
+Changes made: each culture was reduced to its line figures and names and converted to this app's format; descriptions are not included. Illustrations are included for some cultures (see Constellation artwork below).
 Each culture remains under its own licence:
 
 | Culture | Credit | Licence |
@@ -54,6 +54,21 @@ Chinese and Japanese entries are short reference notes generated from the catalo
 ## Constellation artwork (`art/`, `art.js`)
 
 Drawings of the 85 classical figures by Johan Meuris, from Stellarium's "Modern" sky culture, under the Free Art License 1.3 (https://artlibre.org/licence/lal/en/). Changes: converted from grey-on-black to transparent line art, reduced to 320 px and tinted in the app. The modified images remain under the Free Art License.
+
+### Other traditions' artwork (`art/<culture>/`, `art.js` "cult")
+
+Illustrations from the same Stellarium sky cultures, positioned on the sky with Stellarium's own anchor stars. Changes: black backgrounds made transparent, reduced to at most 360 px, tinted in the app (Belarusian drawings keep their colours by day). Each set stays under its culture's licence:
+
+| Culture | Illustrations | Licence |
+|---|---|---|
+| Aztec | Enrique Gómez Candelario and collaborators | GNU GPL v2.0 |
+| Belarusian | Johan Meuris | Free Art License 1.3 |
+| Boorong | John Morieson and Alex Cherney | CC BY-SA 4.0 |
+| Hawaiian Starlines | Kealoha Kaneakua; reworked by Susanne M. Hoffmann | CC BY-SA 4.0 |
+| Inuit | Johan Meuris | Free Art License 1.3 |
+| Northern Andes | after Pasto designs researched by Estelina Quinatoa; Clan Quinatoa; Andrés Alejandro Ayala | GNU GPL v2.0 |
+
+Positions for 25 faint anchor stars come from the HYG database (CC BY-SA 4.0); stars fainter than magnitude 6.5 are used only as invisible anchors.
 
 ## Hand-plotted figure sets (`handfigs.js`)
 
