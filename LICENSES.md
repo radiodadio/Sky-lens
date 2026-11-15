@@ -67,8 +67,12 @@ Illustrations from the same Stellarium sky cultures, positioned on the sky with 
 | Hawaiian Starlines | Kealoha Kaneakua; reworked by Susanne M. Hoffmann | CC BY-SA 4.0 |
 | Inuit | Johan Meuris | Free Art License 1.3 |
 | Northern Andes | after Pasto designs researched by Estelina Quinatoa; Clan Quinatoa; Andrés Alejandro Ayala | GNU GPL v2.0 |
+| Hindu / Vedic | Tanmoy Saha; sanskrit-coders community (Vishvas Vasuki) — from Stellarium v23.4 | CC BY-SA 4.0 |
+| Maya | Eduardo Rodas-Quito and Javier Mejuto, UNAH Honduras, after the Paris Codex — from Stellarium v23.4 | CC BY-NC-SA 4.0 |
+| Māori | Dan Smale — from Stellarium v23.4 | CC BY-SA 4.0 |
+| Boorong ("Girls") | John Morieson and Alex Cherney — from Stellarium v23.4 | CC BY-SA 4.0 |
 
-Positions for 25 faint anchor stars come from the HYG database (CC BY-SA 4.0); stars fainter than magnitude 6.5 are used only as invisible anchors.
+Positions for 31 faint anchor stars come from the HYG database (CC BY-SA 4.0); stars fainter than magnitude 6.5 are used only as invisible anchors.
 
 ## Hand-plotted figure sets (`handfigs.js`)
 

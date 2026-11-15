@@ -1010,7 +1010,7 @@ function renderTrad(){const list=$('tradList');list.innerHTML='';
   fm.innerHTML=`<span class="box ${focusMode?'on':''}">${focusMode?'✓':''}</span><span style="flex:1"><b>Focus mode</b><br><span class="star-meta">Highlight the figure at the centre of the screen and fade the rest</span></span>`;
   fm.onclick=()=>{focusMode=!focusMode;renderTrad();saveState();}; list.appendChild(fm);
   const a=document.createElement('label');a.className='tog';
-  a.innerHTML=`<span class="box ${showArt?'on':''}">${showArt?'✓':''}</span><span style="flex:1"><b>Constellation artwork</b><br><span class="star-meta">Drawings behind the figures — Greek, plus Aztec, Belarusian, Boorong, Hawaiian, Inuit and Northern Andes</span></span>`;
+  a.innerHTML=`<span class="box ${showArt?'on':''}">${showArt?'✓':''}</span><span style="flex:1"><b>Constellation artwork</b><br><span class="star-meta">Drawings behind the figures — Greek, Hindu, Maya, Māori, Aztec, Belarusian, Boorong, Hawaiian, Inuit and Northern Andes</span></span>`;
   a.onclick=()=>{showArt=!showArt;renderTrad();saveState();}; list.appendChild(a);
   const note=document.createElement('div');note.className='mut';note.style.margin='10px 4px';
   note.textContent='Each lens redraws the sky with that tradition’s own figures and names. Most sets come from Stellarium’s sky-culture data; Arabic, Hungarian, Anishinaabe, Lakota, Haudenosaunee, Cherokee, Welsh and Hebrew were plotted by hand from published identifications and are simpler. Full tales so far: the Big Dipper, Cassiopeia, Cygnus, Lyra, Aquila, the Pleiades and Orion.';
@@ -1020,7 +1020,7 @@ function renderTrad(){const list=$('tradList');list.innerHTML='';
   for(const cid in SC.cultures){const c=SC.cultures[cid]; if(c.hand)continue; h+='• '+c.name.replace(/</g,'&lt;')+' — '+c.credit.replace(/</g,'&lt;')+' ('+c.lic+')<br>';}
   h+='<br>PLOTTED BY HAND for Sky Lens from published identifications:<br>';
   for(const cid in SC.cultures){const c=SC.cultures[cid]; if(!c.hand)continue; h+='• '+c.name.replace(/</g,'&lt;')+' — '+c.credit.replace(/</g,'&lt;')+'<br>';}
-  h+='<br>ARTWORK — classical constellation drawings by Johan Meuris, from Stellarium (Free Art License 1.3), converted to transparent line art. Other traditions\' drawings from the Stellarium sky cultures: Aztec (Enrique Gómez Candelario et al., GPL v2), Belarusian and Inuit (Johan Meuris, Free Art License 1.3), Boorong (John Morieson & Alex Cherney, CC BY-SA 4.0), Hawaiian star lines (Kealoha Kaneakua, rev. Susanne M. Hoffmann, CC BY-SA 4.0), Northern Andes (after Pasto designs researched by Estelina Quinatoa, GPL v2).<br>';
+  h+='<br>ARTWORK — classical constellation drawings by Johan Meuris, from Stellarium (Free Art License 1.3), converted to transparent line art. Other traditions\' drawings from the Stellarium sky cultures: Aztec (Enrique Gómez Candelario et al., GPL v2), Belarusian and Inuit (Johan Meuris, Free Art License 1.3), Boorong (John Morieson & Alex Cherney, CC BY-SA 4.0), Hawaiian star lines (Kealoha Kaneakua, rev. Susanne M. Hoffmann, CC BY-SA 4.0), Northern Andes (after Pasto designs researched by Estelina Quinatoa, GPL v2), Hindu/Vedic (Tanmoy Saha & sanskrit-coders, CC BY-SA 4.0), Maya (E. Rodas-Quito & J. Mejuto after the Paris Codex, CC BY-NC-SA 4.0), Māori (Dan Smale, CC BY-SA 4.0).<br>';
   cr.innerHTML=h; list.appendChild(cr);
 }
 function updCount(){$('tradCount').textContent=TRADITIONS.filter(t=>t.on).length+' of '+TRADITIONS.length+' on';}
