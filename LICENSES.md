@@ -74,6 +74,14 @@ Illustrations from the same Stellarium sky cultures, positioned on the sky with 
 
 Positions for 31 faint anchor stars come from the HYG database (CC BY-SA 4.0); stars fainter than magnitude 6.5 are used only as invisible anchors.
 
+### Al-Sufi drawings (`art/sufi/`, optional style for the Greek sky)
+
+Figures from the Ulugh Beg copy of ʿAbd al-Raḥmān al-Ṣūfī's *Book of Fixed Stars* (Bibliothèque nationale de France, Arabe 5036, 15th century), as extracted by Kutaibaa Akraa for Stellarium's Arabic (al-Sufi) sky culture, which marks the illustrations as public domain. Changes: black ground made transparent, reduced in size. Anchor stars from the same Stellarium data.
+
+### Drawings made for Sky Lens (`art/claude/`, shown in green)
+
+95 line drawings made by Claude (Anthropic's AI model) for this app in November 2026: Egyptian, Norse, Sámi, Navajo, Arabic, Hungarian, Anishinaabe/Ojibwe, Lakota, Haudenosaunee, Cherokee, Welsh, Hebrew and Mi'kmaq figures. They are new drawings, not traditional artwork: each one is drawn over the figure's own stars from the figure's name and published descriptions. They copy no published star map. Figures of one star, or of a tight group like the Pleiades, are drawn larger than their stars so they can be seen. They are shown in green by day so you can tell them from traditional artwork.
+
 ## Hand-plotted figure sets (`handfigs.js`)
 
 Arabic, Hungarian, Anishinaabe/Ojibwe, Lakota, Haudenosaunee, Cherokee, Welsh and Hebrew figures were plotted by hand for Sky Lens from published identifications of which stars each figure uses. They are simplified stand-ins, not reproductions of any published star map. Sources: Danielle Adams, "Two Deserts, One Sky" (onesky.arizona.edu) and BBC Sky at Night Magazine; IAU star-name etymology wiki; Magyar Néprajz and Magyar Néprajzi Lexikon; the Ojibwe Sky Star Map (A. Lee, W. Wilson, C. Gawboy, Native Skywatchers) as described by Sky & Telescope and Space.com; Ronald Goodman, *Lakota Star Knowledge*, as summarised by KVNF, the WoLakota Project and Windows to the Universe; James Mooney, *Myths of the Cherokee* (1900); Wikipedia on Dôn and Arianrhod; Job 9:9, 38:31-32 and Amos 5:8 (King James Version).
