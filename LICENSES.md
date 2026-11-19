@@ -85,3 +85,7 @@ Figures from the Ulugh Beg copy of ʿAbd al-Raḥmān al-Ṣūfī's *Book of Fix
 ## Hand-plotted figure sets (`handfigs.js`)
 
 Arabic, Hungarian, Anishinaabe/Ojibwe, Lakota, Haudenosaunee, Cherokee, Welsh and Hebrew figures were plotted by hand for Sky Lens from published identifications of which stars each figure uses. They are simplified stand-ins, not reproductions of any published star map. Sources: Danielle Adams, "Two Deserts, One Sky" (onesky.arizona.edu) and BBC Sky at Night Magazine; IAU star-name etymology wiki; Magyar Néprajz and Magyar Néprajzi Lexikon; the Ojibwe Sky Star Map (A. Lee, W. Wilson, C. Gawboy, Native Skywatchers) as described by Sky & Telescope and Space.com; Ronald Goodman, *Lakota Star Knowledge*, as summarised by KVNF, the WoLakota Project and Windows to the Universe; James Mooney, *Myths of the Cherokee* (1900); Wikipedia on Dôn and Arianrhod; Job 9:9, 38:31-32 and Amos 5:8 (King James Version).
+
+## Magnetic declination (`magdecl.js`)
+
+The phone compass points to magnetic north. Sky Lens converts it to true north with the World Magnetic Model 2025 (WMM2025, NOAA National Centers for Environmental Information and the British Geological Survey), a US Government work in the public domain, valid 2025–2030. The coefficients are the published WMM2025 values; the evaluation code was written for Sky Lens.

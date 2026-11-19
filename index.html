@@ -22,7 +22,8 @@
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; overflow:hidden; overscroll-behavior:none}
   #cam{position:fixed; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .4s; z-index:0}
   #cam.on{opacity:.55}
-  #sky{position:fixed; inset:0; z-index:1; touch-action:none}
+  #sky{position:fixed; inset:0; z-index:2; touch-action:none}
+  #artLayer canvas{position:absolute; left:0; top:0; transform-origin:0 0; will-change:transform,opacity}
   .btn{border:1px solid var(--line); background:var(--panel2); color:var(--text);
     border-radius:22px; height:44px; padding:0 14px; font-size:14px; font-weight:600; display:inline-flex; align-items:center; gap:7px}
   .btn.accent{background:var(--accent); color:var(--accent-ink); border:none}
@@ -96,6 +97,7 @@
 </head>
 <body>
 <video id="cam" playsinline muted></video>
+<div id="artLayer" style="position:fixed; inset:0; z-index:1; pointer-events:none; overflow:hidden; contain:strict"></div>
 <canvas id="sky"></canvas>
 
 <!-- PASSCODE GATE -->
@@ -114,10 +116,10 @@
     <div><h2 id="alignTitle">Align to Polaris</h2><div class="mut">One tap pins the compass for this session</div></div>
     <button class="btn icon" id="alignClose" aria-label="Skip">✕</button>
   </div>
-  <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:13px; overflow:auto">
-    <div class="mut" id="permNote">To point at the sky, this needs motion &amp; (optionally) camera access.</div>
+  <div style="flex:1; min-height:0; display:flex; flex-direction:column; gap:13px; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:10px 0 14px">
+    <div class="mut" id="permNote" style="margin-top:auto">To point at the sky, this needs motion &amp; (optionally) camera access.</div>
     <button class="btn accent" id="enableSensors" style="height:52px; justify-content:center; font-size:16px; flex:none">Enable motion sensors</button>
-    <button class="btn" id="enableCam" style="height:48px; justify-content:center; flex:none">Turn on camera backdrop (optional)</button>
+    <button class="btn" id="enableCam" style="height:auto; min-height:48px; padding:8px 14px; text-align:center; justify-content:center; flex:none">Turn on camera backdrop (optional)</button>
     <div>
       <div class="pre" style="margin-bottom:6px">ALIGN ON</div>
       <div id="alignTargets" style="display:flex; gap:7px; flex-wrap:wrap"></div>
@@ -128,7 +130,7 @@
     <div class="mut" id="liveAim" style="text-align:center">Tap Start: you’ll see the live sky with a ring in the centre. Put the real target in the ring, then tap Lock.</div>
     <button class="btn accent" id="doAlign" style="height:54px; justify-content:center; font-size:16px; flex:none">Start aligning</button>
     <button class="btn hidden" id="resetAlign" style="height:42px; justify-content:center; flex:none">Clear the current alignment</button>
-    <button class="btn" id="skipAlign" style="height:46px; justify-content:center; flex:none">Skip — I'll use Sky Map</button>
+    <button class="btn" id="skipAlign" style="height:46px; justify-content:center; flex:none; margin-bottom:auto">Skip — I'll use Sky Map</button>
   </div>
 </div>
 
@@ -256,6 +258,7 @@
 <script src="handfigs.js?v=19"></script>
 <script src="art.js?v=19"></script>
 <script src="ephem.js?v=19"></script>
+<script src="magdecl.js?v=20"></script>
 <script src="tales.js?v=19"></script>
 <script src="figtales.js?v=19"></script>
 <script>
@@ -351,6 +354,7 @@ addEventListener('orientationchange',()=>{[60,350,900].forEach(t=>setTimeout(()=
 try{ if(window.visualViewport) visualViewport.addEventListener('resize',()=>{pinPage();setTimeout(resize,120);}); }catch(e){}
 document.addEventListener('focusout',()=>setTimeout(pinPage,80));
 addEventListener('pageshow',pinPage);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ compassStale=15; qf=null; qSpike=0; smB=null; qHist.length=0; } });
 /* ---------- astronomy ---------- */
 const D2R=Math.PI/180, R2D=180/Math.PI;
 function julian(d){return d.getTime()/86400000 + 2440587.5;}
@@ -387,10 +391,14 @@ try{ navigator.geolocation && navigator.geolocation.getCurrentPosition(
   ()=>{}, {timeout:8000}); }catch(e){}
 
 /* ---------- orientation ---------- */
-let rawAlpha=0,rawBeta=90,rawGamma=0, haveOrient=false;
+let rawAlpha=0,rawBeta=90,rawGamma=0, haveOrient=false, lastAlpha=null;
 let azOffset=0, altOffset=0, aligned=false; // set by Polaris align
-let gotAbs=false, compassOff=null;
+let gotAbs=false, compassOff=null, compassStale=0, anchorCompass=false;
 function angDiff(a,b){return ((a-b+540)%360+360)%360-180;}
+// The iPhone compass (webkitCompassHeading) and Android's absolute alpha are MAGNETIC; around Toronto magnetic north
+// is about 10° west of true north. The World Magnetic Model gives the difference for wherever the phone is.
+let declC={k:'',v:0};
+function declNow(){ const k=OBS.lat.toFixed(1)+','+OBS.lon.toFixed(1); if(declC.k!==k){ let v=0; try{ if(window.magDeclination) v=magDeclination(OBS.lat,OBS.lon,new Date()); }catch(e){} declC={k,v:isFinite(v)?v:0}; } return declC.v; }
 function onOrient(e){
   if(e.alpha==null && e.webkitCompassHeading==null) return;
   const ios=(e.webkitCompassHeading!=null);
@@ -400,15 +408,21 @@ function onOrient(e){
   }
   rawBeta=e.beta==null?90:e.beta; rawGamma=e.gamma||0;
   if(ios && e.alpha!=null){
-    // iOS: alpha is smooth but relative; the compass heading is only trustworthy with the phone held
-    // fairly flat. Learn the offset then, and keep using the gyro-stable alpha when aimed at the sky.
-    const target=(360-e.webkitCompassHeading)-e.alpha;
-    const flat=Math.abs(rawBeta)<65 && Math.abs(rawGamma)<50;
-    if(compassOff==null){ if(flat) compassOff=target; }
-    else if(flat && !aligned && !(e.webkitCompassAccuracy<0)) compassOff+=angDiff(target,compassOff)*0.05;
+    // iOS: alpha comes from the gyro, smooth but measured from an arbitrary zero that drifts and can restart when
+    // Safari is put away. The compass heading is only trustworthy with the phone held fairly flat. So learn the
+    // offset between the two whenever the phone is flat, and use the gyro-stable alpha when aimed at the sky.
+    lastAlpha=e.alpha; anchorCompass=true;
+    const target=(360-(e.webkitCompassHeading+declNow()))-e.alpha; // true-north heading of the phone's top
+    const flat=Math.abs(rawBeta)<65 && Math.abs(rawGamma)<50, ok=flat && !(e.webkitCompassAccuracy<0);
+    if(compassOff==null){ if(ok){ compassOff=target; compassStale=0; } }
+    else if(ok){
+      // quick re-anchor just after Safari comes back; slow drift correction once aligned (the alignment rides on top)
+      const k=compassStale>0?0.25:(aligned?0.004:0.05); if(compassStale>0) compassStale--;
+      compassOff+=angDiff(target,compassOff)*k;
+    }
     rawAlpha=e.alpha+(compassOff==null?target:compassOff);
-  } else if(ios){ rawAlpha=360-e.webkitCompassHeading; }
-  else rawAlpha=e.alpha||0;
+  } else if(ios){ rawAlpha=360-(e.webkitCompassHeading+declNow()); }
+  else rawAlpha=(e.alpha||0)-((gotAbs)?declNow():0);
   haveOrient=true;
   filterAttitude();
 }
@@ -418,7 +432,11 @@ function onOrient(e){
 let qf=null, qSpike=0;
 function eulerQ(al,be,ga){ const a=al*D2R/2,b=be*D2R/2,g=ga*D2R/2, ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b),cg=Math.cos(g),sg=Math.sin(g);
   const tw=ca*cb,tx=ca*sb,ty=sa*sb,tz=sa*cb; return [tw*cg-ty*sg, tx*cg-tz*sg, tw*sg+ty*cg, tx*sg+tz*cg]; }
+const qHist=[];
 function filterAttitude(){
+  _filterAttitude(); if(qf){ const t=performance.now(); qHist.push([t,qf.slice()]); while(qHist.length&&qHist[0][0]<t-2000) qHist.shift(); }
+}
+function _filterAttitude(){
   let q=eulerQ(rawAlpha,rawBeta,rawGamma);
   if(!qf){ qf=q; return; }
   let d=qf[0]*q[0]+qf[1]*q[1]+qf[2]*q[2]+qf[3]*q[3]; if(d<0){ q=q.map(x=>-x); d=-d; }
@@ -435,8 +453,8 @@ function rotZ(v,deg){const t=deg*D2R,c=Math.cos(t),s=Math.sin(t);return [v[0]*c+
 function vecAzAlt(v){let az=Math.atan2(v[0],v[1])*R2D; if(az<0)az+=360; return {az,alt:Math.asin(Math.max(-1,Math.min(1,v[2])))*R2D};}
 // Full camera frame from the device attitude (includes roll, so the sky stays put when the phone twists).
 // R = Rz(a)Rx(b)Ry(g): screen-right = col 1, screen-top = col 2, back camera = -col 3. World = (E,N,U).
-function liveBasis(noOffsets){
-  const q=qf||eulerQ(rawAlpha,rawBeta,rawGamma), w=q[0],x=q[1],y=q[2],z=q[3];
+function liveBasis(noOffsets,qIn){
+  const q=qIn||qf||eulerQ(rawAlpha,rawBeta,rawGamma), w=q[0],x=q[1],y=q[2],z=q[3];
   let r=[1-2*(y*y+z*z), 2*(x*y+w*z), 2*(x*z-w*y)];
   let u=[2*(x*y-w*z), 1-2*(x*x+z*z), 2*(y*z+w*x)];
   let f=[-2*(x*z+w*y), -2*(y*z-w*x), -(1-2*(x*x+y*y))];
@@ -467,7 +485,10 @@ let MODE="live"; // live | map | tour
 let locked=false, lockedView=null; // frozen camera frame when Point&Lock
 let mapView={az:0,alt:45};
 let activeLens="greek";
-const FOV=68*D2R;
+// Live: 68° top-to-bottom matches the iPhone 1× camera in portrait (24–26 mm lenses give about 67–72°); pinch to fine-tune
+// so the drawing lines up with the camera picture (remembered). Map and Tour: pinch to zoom.
+let liveFovD=68, mapFovD=68; try{ const v=+localStorage.getItem('skylens.fov'); if(v>=50&&v<=85) liveFovD=v; }catch(e){}
+function fovNow(){ return ((MODE==="live"&&haveOrient)?liveFovD:mapFovD)*D2R; }
 let W=0,Hh=0,DPR=1;
 const cv=document.getElementById('sky'), ctx=cv.getContext('2d');
 function resize(){ DPR=Math.min(2,window.devicePixelRatio||1); W=cv.width=innerWidth*DPR; Hh=cv.height=innerHeight*DPR; cv.style.width=innerWidth+'px'; cv.style.height=innerHeight+'px';}
@@ -503,7 +524,7 @@ function draw(){
   requestAnimationFrame(draw);
   if(panTo && MODE==="tour"){ const da=angDiff(panTo.az,mapView.az), dh=panTo.alt-mapView.alt;
     mapView.az=((mapView.az+da*0.12)%360+360)%360; mapView.alt+=dh*0.12; if(Math.abs(da)<0.05&&Math.abs(dh)<0.05) panTo=null; }
-  const lst=lstDeg(new Date(),OBS.lon), B=viewBasis(), focal=(Hh/2)/Math.tan(FOV/2);
+  const lst=lstDeg(new Date(),OBS.lon), B=viewBasis(), focal=(Hh/2)/Math.tan(fovNow()/2);
   ctx.clearRect(0,0,W,Hh);
   starScreen={};
   const starCol=css('--star'), accent=css('--accent'), ghost=css('--ghost'), dim=css('--dim'), panelCol=css('--panel'), accentInk=css('--accent-ink');
@@ -564,7 +585,9 @@ function draw(){
   if(!focusMode || !focus || focus.d>Hh*0.3) focus=null;   // nothing near the centre: no figure is singled out
   focusKey=focus?focus.key:null;
   // constellation artwork behind the Greek figures
+  artFrame++;
   if(showArt && !(aligning&&MODE==="live")){ const ae=artEntries(); if(ae.length) drawArt(ae,lst,B,focal,nightMode,focusMode?focusKey:undefined); }
+  artSweep();
   // Greek sky as faint ghost lines behind another tradition's figures
   if(under && showGhost){ ctx.globalAlpha=focus?.3:.5;
     for(const c2 of SD.cons) for(const seg of c2.lines) drawSeg(seg.filter(n=>typeof n==="number"), ghost, 1);
@@ -601,9 +624,9 @@ function draw(){
   // live read-out of where the view is aimed
   if((frameN++%8)===0){
     const d=vecAzAlt(B.f), where=CARD8[Math.round(d.az/45)%8]+" · "+Math.round(d.alt)+"° up";
-    if(autoStatus){
+    if(autoStatus && frameN>statusHold){
       if(MODE==="map") setStatus("Map · "+where);
-      else if(MODE==="live" && haveOrient) setStatus((locked?"Locked · ":"Live · ")+where);
+      else if(MODE==="live" && haveOrient) setStatus((locked?"Locked · ":"Live · ")+where+(anchorCompass&&!locked&&(compassOff==null||compassStale>0)?" · hold the phone flat a moment to "+(compassOff==null?"set":"re-check")+" the compass":""));
       else if(MODE==="live") setStatus("No motion data · drag to look around");
     }
     if(aligning) updAlignMsg();
@@ -633,17 +656,89 @@ function artTinted(id,e,night){
     o.t[k]=c; }
   return o.t[k];
 }
+// Artwork placement. Each drawing is pinned to the sky by three anchor stars, the way Stellarium does it: image point
+// (x,y) maps to the direction M·(x,y,1), so the drawing lies on a plane through its stars. Seen through the screen's
+// perspective, a plane maps to the screen by an exact perspective (projective) transform, so each drawing is shown as a
+// layer under the sky canvas with that 3D transform: the whole drawing stays on its stars anywhere on screen (a flat
+// 2D transform only keeps the three anchors right and shears the rest near the edges). A drawing that reaches round
+// behind the viewer is drawn on the canvas in small tiles instead.
+let artFrame=0; const artLayer=document.getElementById('artLayer'), artShown=new Map();
+function artSweep(){ for(const [c,f] of artShown){ if(f!==artFrame){ c.style.display='none'; artShown.delete(c); } } }
+function radecV(ra,dec){const r=ra*D2R,d=dec*D2R; return [Math.cos(d)*Math.cos(r),Math.cos(d)*Math.sin(r),Math.sin(d)];}
+function artM(e){
+  if(e._M!==undefined) return e._M;
+  const V=e.a.map(a=>{const st=byHip[a[2]]; return st?radecV(st[1],st[2]):null;}); if(V.some(v=>!v)) return e._M=null;
+  const [x1,y1]=e.a[0],[x2,y2]=e.a[1],[x3,y3]=e.a[2], det=x1*(y2-y3)-y1*(x2-x3)+(x2*y3-x3*y2); if(Math.abs(det)<1e-9) return e._M=null;
+  // inverse of [[x1,x2,x3],[y1,y2,y3],[1,1,1]]
+  const I=[[(y2-y3)/det,(x3-x2)/det,(x2*y3-x3*y2)/det],[(y3-y1)/det,(x1-x3)/det,(x3*y1-x1*y3)/det],[(y1-y2)/det,(x2-x1)/det,(x1*y2-x2*y1)/det]];
+  const M=[0,1,2].map(r=>[0,1,2].map(c=>V[0][r]*I[0][c]+V[1][r]*I[1][c]+V[2][r]*I[2][c]));
+  return e._M=M;
+}
+let artBudget=0;
 function drawArt(list,lst,B,focal,night,fkey){
-  for(const it of list){ const e=it.e, q=[]; let ok=true, near=false;
-    for(const a of e.a){ const st=byHip[a[2]]; if(!st){ok=false;break;} const aa=altaz(st[1],st[2],OBS.lat,lst), p=project(dirVec(aa.az,aa.alt),B,focal);
-      if(!p||p.z<0.25){ok=false;break;} q.push(p); if(p.x>-W*0.4&&p.x<W*1.4&&p.y>-Hh*0.4&&p.y<Hh*1.4) near=true; }
-    if(!ok||!near) continue;
+  // equatorial unit vector -> (East, North, Up) for this moment and place
+  const L=lst*D2R, cL=Math.cos(L), sL=Math.sin(L), ph=OBS.lat*D2R, cP=Math.cos(ph), sP=Math.sin(ph);
+  const enu=v=>{ const h=v[0]*cL+v[1]*sL; return [-(v[0]*sL-v[1]*cL), v[2]*cP-h*sP, v[2]*sP+h*cP]; };
+  const scr=(M,x,y)=>{ const v=[M[0][0]*x+M[0][1]*y+M[0][2], M[1][0]*x+M[1][1]*y+M[1][2], M[2][0]*x+M[2][1]*y+M[2][2]], n=Math.hypot(v[0],v[1],v[2])||1;
+    return project(enu([v[0]/n,v[1]/n,v[2]/n]),B,focal); };
+  artBudget=500; // tiles per frame, so a crowded view can't slow the phone down
+  const E2H=[[-sL,cL,0],[-cL*sP,-sL*sP,cP],[cL*cP,sL*cP,sP]], d=DPR;
+  let zi=0;
+  for(const it of list){ const e=it.e, M=artM(e); if(!M) continue; zi++;
+    const [Wi,Hi]=e.s, q=e.a.map(a=>scr(M,a[0],a[1]));
+    // quick visibility test on a coarse 3×3 sample of the drawing
+    let near=false, behind=false; const smp=[];
+    for(let j=0;j<=2;j++) for(let i=0;i<=2;i++){ const p=scr(M,Wi*i/2,Hi*j/2); smp.push(p); if(!p||p.z<0.12){behind=true;continue;} if(p.x>-W*0.3&&p.x<W*1.3&&p.y>-Hh*0.3&&p.y<Hh*1.3) near=true; }
+    if(!near) continue;
     const im=artTinted(it.id,e,night); if(!im) continue;
-    const [x1,y1]=e.a[0],[x2,y2]=e.a[1],[x3,y3]=e.a[2], det=x1*(y2-y3)-y1*(x2-x3)+(x2*y3-x3*y2); if(Math.abs(det)<1e-6) continue;
-    const sol=(u1,u2,u3)=>[(u1*(y2-y3)+u2*(y3-y1)+u3*(y1-y2))/det,(u1*(x3-x2)+u2*(x1-x3)+u3*(x2-x1))/det,(u1*(x2*y3-x3*y2)+u2*(x3*y1-x1*y3)+u3*(x1*y2-x2*y1))/det];
-    const [a,c,e2]=sol(q[0].x,q[1].x,q[2].x), [b,d,f]=sol(q[0].y,q[1].y,q[2].y);
-    ctx.save(); ctx.globalAlpha=Math.min(1,(night?.8:.85)*(e.o||1)*(fkey===undefined?1:(it.key&&fkey===it.key?1.18:(fkey?0.5:0.9)))); ctx.setTransform(a,b,c,d,e2,f); ctx.drawImage(im,0,0,e.s[0],e.s[1]); ctx.restore(); // e.o: solid drawings are held back so stars show through
+    const alpha=Math.min(1,(night?.8:.85)*(e.o||1)*(fkey===undefined?1:(it.key&&fkey===it.key?1.18:(fkey?0.5:0.9)))); // e.o: solid drawings are held back so stars show through
+    // exact perspective transform when all four corners are comfortably in front of the viewer
+    if([0,2,6,8].every(k=>smp[k]&&smp[k].z>=0.1)){
+      const Q=[0,1,2].map(r=>[0,1,2].map(c=>E2H[r][0]*M[0][c]+E2H[r][1]*M[1][c]+E2H[r][2]*M[2][c]));
+      const dotc=(v,c)=>v[0]*Q[0][c]+v[1]*Q[1][c]+v[2]*Q[2][c];
+      const hx=[0,1,2].map(c=>(W/2*dotc(B.f,c)+focal*dotc(B.r,c))/d), hy=[0,1,2].map(c=>(Hh/2*dotc(B.f,c)-focal*dotc(B.u,c))/d), hw=[0,1,2].map(c=>dotc(B.f,c));
+      const sc=1/hw[2]; // keep the numbers in a comfortable range
+      if(im.parentNode!==artLayer){ im.style.width=Wi+'px'; im.style.height=Hi+'px'; artLayer.appendChild(im); }
+      im.style.transform='matrix3d('+[hx[0]*sc,hy[0]*sc,0,hw[0]*sc, hx[1]*sc,hy[1]*sc,0,hw[1]*sc, 0,0,1,0, hx[2]*sc,hy[2]*sc,0,1].join(',')+')';
+      im.style.opacity=alpha.toFixed(3); im.style.zIndex=zi; im.style.display='block'; artShown.set(im,artFrame);
+      continue;
+    }
+    // how far a single flat transform would stray from the true placement, over the part that can be seen (device px)
+    const [x1,y1]=e.a[0],[x2,y2]=e.a[1],[x3,y3]=e.a[2], det=x1*(y2-y3)-y1*(x2-x3)+(x2*y3-x3*y2);
+    const anchorsOk=!q.some(p=>!p||p.z<0.12);
+    const flat=()=>{ const sol=(u1,u2,u3)=>[(u1*(y2-y3)+u2*(y3-y1)+u3*(y1-y2))/det,(u1*(x3-x2)+u2*(x1-x3)+u3*(x2-x1))/det,(u1*(x2*y3-x3*y2)+u2*(x3*y1-x1*y3)+u3*(x1*y2-x2*y1))/det];
+      return [sol(q[0].x,q[1].x,q[2].x), sol(q[0].y,q[1].y,q[2].y)]; };
+    const drawFlat=F=>{ ctx.save(); ctx.globalAlpha=alpha; ctx.setTransform(F[0][0],F[1][0],F[0][1],F[1][1],F[0][2],F[1][2]); ctx.drawImage(im,0,0,Wi,Hi); ctx.restore(); };
+    let n=10, F=null;
+    if(anchorsOk && !behind){ F=flat(); let err=0;
+      smp.forEach((p,k)=>{ if(p.x<-W*0.3||p.x>W*1.3||p.y<-Hh*0.3||p.y>Hh*1.3) return; const x=Wi*(k%3)/2, y=Hi*Math.floor(k/3)/2;
+        err=Math.max(err,Math.hypot(F[0][0]*x+F[0][1]*y+F[0][2]-p.x, F[1][0]*x+F[1][1]*y+F[1][2]-p.y)); });
+      if(err<2*DPR){ drawFlat(F); continue; }
+      n=Math.min(12,Math.ceil(Math.sqrt(err/(1.2*DPR)))); }
+    // tile it; if this frame's tile budget is nearly used up, use fewer tiles (or, failing that, the flat transform)
+    let G=null, vis=0;
+    for(;;){ G=[]; for(let j=0;j<=n;j++){ const row=[]; for(let i=0;i<=n;i++) row.push(scr(M,Wi*i/n,Hi*j/n)); G.push(row); }
+      vis=0; for(let j=0;j<n;j++) for(let i=0;i<n;i++){ const c=[G[j][i],G[j][i+1],G[j+1][i],G[j+1][i+1]]; if(c.every(p=>p&&p.z>=0.08) && c.some(p=>p.x>-W*0.1&&p.x<W*1.1&&p.y>-Hh*0.1&&p.y<Hh*1.1)) vis++; }
+      if(vis<=artBudget||n<=2) break; n=Math.max(2,Math.floor(n*0.7)); }
+    if(vis>artBudget){ if(F) drawFlat(F); continue; }
+    artBudget-=vis;
+    ctx.save(); ctx.globalAlpha=alpha;
+    for(let j=0;j<n;j++) for(let i=0;i<n;i++) artTile(im,G[j][i],G[j][i+1],G[j+1][i],G[j+1][i+1],Wi*i/n,Hi*j/n,Wi*(i+1)/n,Hi*(j+1)/n);
+    ctx.restore();
   }
+}
+// one tile of a drawing: the best flat fit to where its four corners fall on screen (tiles are small enough that the
+// fit is within a pixel or so, and each tile only samples its own part of the image)
+function artTile(im,p00,p10,p01,p11,x0,y0,x1,y1){
+  if(!p00||!p10||!p01||!p11||p00.z<0.08||p10.z<0.08||p01.z<0.08||p11.z<0.08) return;
+  const minx=Math.min(p00.x,p10.x,p01.x,p11.x), maxx=Math.max(p00.x,p10.x,p01.x,p11.x), miny=Math.min(p00.y,p10.y,p01.y,p11.y), maxy=Math.max(p00.y,p10.y,p01.y,p11.y);
+  if(maxx<0||minx>W||maxy<0||miny>Hh) return;
+  const w=x1-x0, h=y1-y0, cx=(p00.x+p10.x+p01.x+p11.x)/4, cy=(p00.y+p10.y+p01.y+p11.y)/4;
+  const a=(p10.x+p11.x-p00.x-p01.x)/(2*w), b=(p10.y+p11.y-p00.y-p01.y)/(2*w), c=(p01.x+p11.x-p00.x-p10.x)/(2*h), d=(p01.y+p11.y-p00.y-p10.y)/(2*h);
+  const xc=(x0+x1)/2, yc=(y0+y1)/2;
+  ctx.setTransform(a,b,c,d,cx-a*xc-c*yc,cy-b*xc-d*yc);
+  const sx=Math.max(0,x0-0.5), sy=Math.max(0,y0-0.5), sw=Math.min(im.width,x1+0.5)-sx, sh=Math.min(im.height,y1+0.5)-sy;
+  if(sw>0&&sh>0) ctx.drawImage(im,sx,sy,sw,sh,sx,sy,sw,sh);
 }
 function conLines(iau){const c=SD.cons.find(x=>x.iau===iau);return c?c.lines:[];}
 requestAnimationFrame(draw);
@@ -651,10 +746,23 @@ requestAnimationFrame(draw);
 /* ---------- pointer: drag to look (map / tour, or live without sensors), tap to identify ---------- */
 let drag=null, dragMoved=false;
 function canDrag(){return !(MODE==="live" && haveOrient);}
-cv.addEventListener('pointerdown',e=>{ dragMoved=false; panTo=null; if(!canDrag())return; drag={x:e.clientX,y:e.clientY,az:mapView.az,alt:mapView.alt}; });
-addEventListener('pointermove',e=>{ if(!drag)return; const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+// two fingers: pinch. In Live it sets how big the sky is drawn so it matches the camera picture; elsewhere it zooms.
+const touchPts=new Map(); let pinch=null, statusHold=0;
+function pinchDist(){ const v=[...touchPts.values()]; return Math.hypot(v[0].x-v[1].x,v[0].y-v[1].y); }
+cv.addEventListener('pointerdown',e=>{ touchPts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(touchPts.size===2){ const live=(MODE==="live"&&haveOrient); pinch={d0:Math.max(20,pinchDist()), f0:live?liveFovD:mapFovD, live}; drag=null; dragMoved=true; } },true);
+addEventListener('pointermove',e=>{ if(touchPts.has(e.pointerId)) touchPts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch && touchPts.size>=2){ const t=Math.tan(pinch.f0*D2R/2)*pinch.d0/Math.max(20,pinchDist());
+    const lo=pinch.live?50:20, hi=pinch.live?85:100, f=Math.max(lo,Math.min(hi,2*Math.atan(t)*R2D));
+    if(pinch.live){ liveFovD=f; setStatus("Camera match · "+f.toFixed(1)+"° top to bottom"+(f.toFixed(0)==="68"?" (standard)":"")); }
+    else { mapFovD=f; setStatus("Zoom · "+f.toFixed(0)+"° top to bottom"); }
+    statusHold=frameN+90; } });
+function endTouch(e){ touchPts.delete(e.pointerId); if(pinch && touchPts.size<2){ if(pinch.live){ try{localStorage.setItem('skylens.fov',liveFovD.toFixed(1));}catch(err){} } pinch=null; drag=null; } }
+addEventListener('pointerup',endTouch); addEventListener('pointercancel',endTouch);
+cv.addEventListener('pointerdown',e=>{ if(pinch) return; dragMoved=false; panTo=null; if(!canDrag())return; drag={x:e.clientX,y:e.clientY,az:mapView.az,alt:mapView.alt}; });
+addEventListener('pointermove',e=>{ if(!drag||pinch)return; const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
   if(Math.hypot(dx,dy)>8) dragMoved=true;
-  const k=(FOV*R2D)/innerHeight; // sky follows the finger 1:1
+  const k=(fovNow()*R2D)/innerHeight; // sky follows the finger 1:1
   mapView.alt=Math.max(-5,Math.min(89,drag.alt + dy*k));
   mapView.az=((drag.az - dx*k/Math.max(.35,Math.cos(mapView.alt*D2R)))%360+360)%360; });
 addEventListener('pointerup',()=>drag=null);
@@ -730,7 +838,7 @@ async function enableSensors(){
 $('enableSensors').onclick=enableSensors;
 $('enableCam').onclick=async()=>{
   try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-    const v=$('cam'); v.srcObject=st; await v.play(); v.classList.add('on'); $('enableCam').textContent='Camera backdrop on ✓';
+    const v=$('cam'); v.srcObject=st; await v.play(); v.classList.add('on'); $('enableCam').textContent='Camera backdrop on ✓ — if the drawn sky and the picture differ in size, pinch the sky with two fingers to match them';
   }catch(e){$('enableCam').textContent='Camera unavailable here';}
 };
 let alignTarget="Polaris";
@@ -763,7 +871,7 @@ function doAlign(){
 let aligning=false;
 // Sighting guide drawn while aligning: the Dipper stick figures and pointer line, a big pulsing marker on the
 // target with a label on a solid backing, and an edge arrow when the target is off screen.
-const UMI_LINES=[[11767,85822],[85822,82080],[82080,77055],[77055,79822],[79822,72607],[72607,75097],[75097,77055]];
+const UMI_LINES=[[11767,85822],[85822,82080],[82080,77055],[77055,79822],[79822,75097],[75097,72607],[72607,77055]];
 const UMA_LINES=[[54061,53910],[53910,58001],[58001,59774],[59774,54061],[59774,62956],[62956,65378],[65378,67301]];
 function drawAlignGuide(B,focal,lst,accent,ink,FONT,night){
   const t=alignTargetNow(), tv=dirVec(t.az,t.alt), q=project(tv,B,focal), cx0=W/2, cy0=Hh/2, pulse=0.5+0.5*Math.sin(performance.now()/260);
@@ -816,15 +924,40 @@ function tname(id){ return id==="Moon"?"the Moon":id; }
 function updAlignMsg(){ if(!aligning)return; const t=alignTargetNow(), d=vecAzAlt(liveBasis().f);
   const sep=Math.acos(Math.max(-1,Math.min(1,Math.sin(d.alt*D2R)*Math.sin(t.alt*D2R)+Math.cos(d.alt*D2R)*Math.cos(t.alt*D2R)*Math.cos((d.az-t.az)*D2R))))*R2D;
   $('alignMsg').textContent="Put the real "+tname(t.id).replace(/^the /,'')+" in the centre ring ("+card16(t.az)+", "+Math.round(t.alt)+"° up), then tap Lock. The app's marker is "+sep.toFixed(0)+"° from the ring."; }
+// Attitude averaged over the half second before the finger touched Lock, so the tap's own jolt isn't measured.
+let lockDownT=0;
+function steadyQ(tEnd){
+  const pts=qHist.filter(h=>h[0]>=tEnd-650 && h[0]<=tEnd-60); if(pts.length<3) return null;
+  const ref=pts[pts.length-1][1], m=[0,0,0,0];
+  for(const [,q] of pts){ const sg=(q[0]*ref[0]+q[1]*ref[1]+q[2]*ref[2]+q[3]*ref[3])<0?-1:1; for(let i=0;i<4;i++) m[i]+=sg*q[i]; }
+  const l=Math.hypot(...m)||1; return m.map(x=>x/l);
+}
+// Solve the two corrections exactly: a turn of the whole sky about the vertical (compass error) and a tilt about
+// the camera's left-right axis. Works whether or not the phone is twisted sideways when Lock is tapped.
+function solveAlign(B,t){
+  const s=Math.sin(t.alt*D2R), A=B.f[2], C=B.u[2], R=Math.hypot(A,C)||1e-9, ph=Math.atan2(C,A), k=Math.acos(Math.max(-1,Math.min(1,s/R)));
+  const c1=angDiff((ph+k)*R2D,0), c2=angDiff((ph-k)*R2D,0), a=Math.abs(c1)<=Math.abs(c2)?c1:c2, ar=a*D2R;
+  const g=[B.f[0]*Math.cos(ar)+B.u[0]*Math.sin(ar), B.f[1]*Math.cos(ar)+B.u[1]*Math.sin(ar), B.f[2]*Math.cos(ar)+B.u[2]*Math.sin(ar)];
+  return {az:angDiff(t.az,vecAzAlt(g).az), tilt:a};
+}
 function lockAlign(){
-  // Where the phone thinks it is aimed (no corrections) vs. where Polaris really is right now.
-  const d=vecAzAlt(liveBasis(true).f), opts=alignOptions();
-  const t=opts.find(x=>x.id===alignTarget)||opts[0]; // where the chosen target really is right now
-  azOffset=angDiff(t.az,d.az); altOffset=t.alt-d.alt; aligned=true; smB=null; aligning=false;
-  $('alignMsg').textContent="Alignment locked on "+tname(t.id)+": heading corrected by "+(azOffset>=0?"+":"")+azOffset.toFixed(0)+"°, tilt by "+(altOffset>=0?"+":"")+altOffset.toFixed(0)+"°. It stays until you close the app; tap ✛ to redo or clear it.";
-  $('alignLock').classList.add('hidden'); $('alignCancel').textContent='OK'; setTimeout(()=>{ if(!aligning) $('alignBar').classList.add('hidden'); },6000);
+  // Where the phone thinks it is aimed (no corrections) vs. where the target really is right now.
+  const qs=steadyQ(lockDownT&&performance.now()-lockDownT<1500?lockDownT:performance.now()-150);
+  const B=liveBasis(true,qs||undefined), opts=alignOptions();
+  const t=opts.find(x=>x.id===alignTarget)||opts[0];
+  const sol=solveAlign(B,t);
+  if(compassOff==null && lastAlpha!=null) compassOff=rawAlpha-lastAlpha; // freeze the compass anchor this lock was measured against
+  azOffset=sol.az; altOffset=sol.tilt; aligned=true; smB=null; aligning=false; lockDownT=0;
+  const sg=v=>(v>=0?"+":"")+v.toFixed(0)+"°";
+  let msg="Alignment locked on "+tname(t.id)+": heading corrected by "+sg(azOffset)+", tilt by "+sg(altOffset)+".";
+  if(Math.abs(altOffset)>5) msg+=" That tilt is more than the phone's sensors are normally off by — check it really was "+tname(t.id)+" in the ring and hold still as you tap. Tap ✛ to redo.";
+  else if(Math.abs(azOffset)>20) msg+=" A large compass error like this usually comes from metal nearby or a magnet in a case or wallet.";
+  msg+=" It stays until you close the app; tap ✛ to redo or clear it.";
+  $('alignMsg').textContent=msg;
+  $('alignLock').classList.add('hidden'); $('alignCancel').textContent='OK'; setTimeout(()=>{ if(!aligning) $('alignBar').classList.add('hidden'); },Math.abs(altOffset)>5||Math.abs(azOffset)>20?12000:6000);
 }
 $('doAlign').onclick=doAlign;
+$('alignLock').addEventListener('pointerdown',()=>{ lockDownT=performance.now(); });
 $('alignLock').onclick=lockAlign;
 $('alignCancel').onclick=()=>{ aligning=false; $('alignBar').classList.add('hidden'); };
 $('resetAlign').onclick=()=>{ azOffset=0; altOffset=0; aligned=false; smB=null; $('resetAlign').classList.add('hidden'); $('liveAim').textContent='Alignment cleared.'; };
@@ -1024,7 +1157,7 @@ function renderTrad(){const list=$('tradList');list.innerHTML='';
   for(const cid in SC.cultures){const c=SC.cultures[cid]; if(c.hand)continue; h+='• '+c.name.replace(/</g,'&lt;')+' — '+c.credit.replace(/</g,'&lt;')+' ('+c.lic+')<br>';}
   h+='<br>PLOTTED BY HAND for Sky Lens from published identifications:<br>';
   for(const cid in SC.cultures){const c=SC.cultures[cid]; if(!c.hand)continue; h+='• '+c.name.replace(/</g,'&lt;')+' — '+c.credit.replace(/</g,'&lt;')+'<br>';}
-  h+='<br>ARTWORK — classical constellation drawings by Johan Meuris, from Stellarium (Free Art License 1.3), converted to transparent line art. Other traditions\' drawings from the Stellarium sky cultures: Aztec (Enrique Gómez Candelario et al., GPL v2), Belarusian and Inuit (Johan Meuris, Free Art License 1.3), Boorong (John Morieson & Alex Cherney, CC BY-SA 4.0), Hawaiian star lines (Kealoha Kaneakua, rev. Susanne M. Hoffmann, CC BY-SA 4.0), Northern Andes (after Pasto designs researched by Estelina Quinatoa, GPL v2), Hindu/Vedic (Tanmoy Saha & sanskrit-coders, CC BY-SA 4.0), Maya (E. Rodas-Quito & J. Mejuto after the Paris Codex, CC BY-NC-SA 4.0), Māori (Dan Smale, CC BY-SA 4.0). Al-Sufi drawings from the Ulugh Beg manuscript of the Book of Fixed Stars (public domain). DRAWINGS IN GREEN were made by Claude for Sky Lens: they are new drawings, not traditional artwork.<br>';
+  h+='<br>ARTWORK — classical constellation drawings by Johan Meuris, from Stellarium (Free Art License 1.3), converted to transparent line art. Other traditions\' drawings from the Stellarium sky cultures: Aztec (Enrique Gómez Candelario et al., GPL v2), Belarusian and Inuit (Johan Meuris, Free Art License 1.3), Boorong (John Morieson & Alex Cherney, CC BY-SA 4.0), Hawaiian star lines (Kealoha Kaneakua, rev. Susanne M. Hoffmann, CC BY-SA 4.0), Northern Andes (after Pasto designs researched by Estelina Quinatoa, GPL v2), Hindu/Vedic (Tanmoy Saha & sanskrit-coders, CC BY-SA 4.0), Maya (E. Rodas-Quito & J. Mejuto after the Paris Codex, CC BY-NC-SA 4.0), Māori (Dan Smale, CC BY-SA 4.0). Al-Sufi drawings from the Ulugh Beg manuscript of the Book of Fixed Stars (public domain). DRAWINGS IN GREEN were made by Claude for Sky Lens: they are new drawings, not traditional artwork.<br>COMPASS — true north from the World Magnetic Model 2025 (NOAA NCEI / British Geological Survey, public domain).<br>';
   cr.innerHTML=h; list.appendChild(cr);
 }
 function updCount(){$('tradCount').textContent=TRADITIONS.filter(t=>t.on).length+' of '+TRADITIONS.length+' on';}
