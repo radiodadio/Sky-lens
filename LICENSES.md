@@ -89,3 +89,17 @@ Arabic, Hungarian, Anishinaabe/Ojibwe, Lakota, Haudenosaunee, Cherokee, Welsh an
 ## Magnetic declination (`magdecl.js`)
 
 The phone compass points to magnetic north. Sky Lens converts it to true north with the World Magnetic Model 2025 (WMM2025, NOAA National Centers for Environmental Information and the British Geological Survey), a US Government work in the public domain, valid 2025–2030. The coefficients are the published WMM2025 values; the evaluation code was written for Sky Lens.
+
+## Star facts (`stardata.js`)
+
+Distances, spectral types, colours and variability come from the HYG database v4.1 and its AT-HYG v3.2 subset by David Nash (astronexus.com, github.com/astronexus/HYG-Database), licensed CC BY-SA 4.0. Distances are from Gaia DR3 where AT-HYG has them, otherwise from the 2007 Hipparcos reduction. For the 93 stars brighter than magnitude 2.5, distances and spectral types are the published values tabulated in Wikipedia's "List of brightest stars" (CC BY-SA 4.0). Mira's brightness range is its full recorded range.
+
+Temperatures, luminosities and radii are **estimates** made for Sky Lens: temperature from the spectral type for O–A stars (Pecaut & Mamajek 2013, ApJS 208, 9; table maintained by E. Mamajek) or from the B–V colour for F–M stars (Ballesteros 2012, EPL 97, 34008); bolometric corrections from Flower (1996, ApJ 469, 355) with the corrected coefficients of Torres (2010, AJ 140, 1158), taking the Sun's bolometric magnitude as 4.73; L = 10^(−0.4(M_V + BC − 4.73)) and R = √L·(5772 K/T)². They ignore interstellar dust. No estimates are made for large-amplitude variables, and no radius for stars whose catalogued light is the combined light of two or more stars.
+
+The short notes on well-known stars (`SKYSTARNOTES`) were written for Sky Lens and checked against published sources (NASA, ESA, Sky & Telescope, Britannica, Nature and the stars' Wikipedia articles and their references).
+
+## Nebulae, clusters and galaxies (`dso.js`)
+
+The 110 Messier objects (M102 taken as NGC 5866), the 109 Caldwell objects and seven extras (Large and Small Magellanic Clouds, Galactic Centre, Alpha Persei Cluster, Coma Star Cluster, Coathanger, Horsehead Nebula). Positions, sizes, position angles and magnitudes come from the HYG database's deep-sky file `misc/dso.csv` (David Nash, astronexus.com), licensed CC BY-SA 2.5, which takes them from the Historically Corrected NGC (NGC/IC Project) and related catalogues; the Horsehead's position and size are from Barnard 33's published data. Object types and distances come from the tables in Wikipedia's "Messier object" and "Caldwell catalogue" articles (CC BY-SA 4.0), except: the Magellanic Clouds (detached eclipsing binaries: Pietrzyński et al. 2019, Nature 567, 200; Graczyk et al. 2020, ApJ 904, 13), the Helix Nebula (Gaia parallax of its central star) and the Galactic Centre (range of recent measurements). True sizes in light-years are worked out from the catalogued apparent size and the distance.
+
+The short notes on the objects were written for Sky Lens and checked against published sources (ESA/Hubble, the Event Horizon Telescope collaboration, Nature and the objects' Wikipedia articles and their references).

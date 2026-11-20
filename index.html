@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta name="googlebot" content="noindex, nofollow">
 <title>Sky Lens</title>
+<link rel="icon" href="data:,">
 <style>
   :root{
     --accent:#F2B66D; --accent-ink:#1A1206; --ground:#0B1020; --panel:#141B30;
@@ -80,7 +81,7 @@
     padding:calc(env(safe-area-inset-top) + 20px) 18px env(safe-area-inset-bottom)}
   .hidden{display:none !important}
   body{position:fixed; inset:0; width:100%}
-  .grab,.sheet-h,#taleTrads,#tradPresets{flex:none}
+  .grab,.sheet-h,#taleTrads{flex:none}
   #taleTrads{padding:6px 16px 4px !important}
   #modes button{height:34px !important; padding:0 10px !important}
   #top{gap:6px}
@@ -93,6 +94,28 @@
   #status span{background:none !important; color:var(--dim) !important; padding:0 !important; font-size:11px !important; pointer-events:none !important; text-shadow:0 1px 3px var(--ground)}
   .mut{color:var(--dim); font-size:13px; line-height:1.5}
   a{color:var(--accent)}
+  /* one-tap layer switches down the right edge */
+  #layers{position:fixed; right:14px; top:calc(env(safe-area-inset-top) + 60px); z-index:5; display:flex; flex-direction:column; gap:9px}
+  #layers .btn.sm{box-shadow:0 1px 6px rgba(0,0,0,.35)}
+  #layers .btn.sm:not(.onb){color:var(--dim)}
+  /* fact card at the top of the tale sheet (stars, nebulae, clusters, galaxies) */
+  .icard{background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:10px 12px; margin:10px 0 4px}
+  .icard-h{display:flex; align-items:flex-start; gap:8px; cursor:pointer}
+  .icard-t{font-size:15px; font-weight:700; line-height:1.3}
+  .icard-t .des{font-weight:500; color:var(--dim); font-size:12.5px; margin-left:3px}
+  .icard-s{font-size:12.5px; color:var(--dim); margin-top:3px; line-height:1.4}
+  .icard-x{color:var(--dim); font-size:12px; padding:3px 2px 0; transition:transform .2s}
+  .icard.open .icard-x{transform:rotate(180deg)}
+  .icard-b{display:none; margin-top:8px}
+  .icard.open .icard-b, .icard.fixed .icard-b{display:block}
+  .icard.fixed .icard-h{cursor:default}
+  .frow{display:grid; grid-template-columns:92px 1fr; gap:10px; padding:6px 0; border-top:1px solid var(--line); font-size:13px; line-height:1.42}
+  .frow>b{font-weight:600; color:var(--dim); font-size:11.5px; padding-top:1px}
+  .frow .g{color:var(--dim); font-size:12px}
+  .icard-b>.frow:first-child{border-top:none; padding-top:0}
+  .fnote{font-size:13.5px; line-height:1.55; padding:8px 0 2px; border-top:1px solid var(--line)}
+  .fsrc{font-size:10.5px; color:var(--dim); margin-top:7px; line-height:1.45}
+  .fsrc a{text-decoration:none}
 </style>
 </head>
 <body>
@@ -143,13 +166,18 @@
   </div>
   <div id="toprt">
     <button class="btn sm hidden" id="btnLock" aria-label="Lock the view"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></button>
-    <button class="btn sm hidden" id="btnGreek" aria-label="Show or hide the Greek constellations" style="font-size:11px; font-weight:700">Gr</button>
     <button class="btn sm" id="btnNight" aria-label="Red night mode">☾</button>
     <button class="btn sm" id="btnAlign" aria-label="Align">✛</button>
-    <button class="btn sm" id="btnTrad" aria-label="Traditions">☰</button>
+    <button class="btn sm" id="btnTrad" aria-label="Display settings and traditions">☰</button>
   </div>
 </div>
 <div id="status"><span id="statusTxt">Point &amp; Lock</span></div>
+<!-- LAYER SWITCHES -->
+<div id="layers">
+  <button class="btn sm onb" id="btnArt" aria-label="Constellation pictures on or off" title="Constellation pictures"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.2"></rect><circle cx="15.6" cy="9.3" r="1.6"></circle><path d="M5.5 17l4.6-5.2 3.4 3.6 2.2-2.2 3 3.8"></path></svg></button>
+  <button class="btn sm onb" id="btnDSO" aria-label="Nebulae, clusters and galaxies on or off" title="Nebulae, clusters and galaxies"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><ellipse cx="12" cy="12" rx="9.5" ry="4.3" transform="rotate(-28 12 12)"></ellipse><circle cx="12" cy="12" r="1.9" fill="currentColor" stroke="none"></circle><circle cx="19.3" cy="4.6" r="1" fill="currentColor" stroke="none"></circle><circle cx="4.6" cy="19.2" r=".8" fill="currentColor" stroke="none"></circle></svg></button>
+  <button class="btn sm hidden" id="btnGreek" aria-label="Greek ghost lines on or off" title="Greek figures behind this tradition" style="font-size:11px; font-weight:700">Gr</button>
+</div>
 
 <!-- BOTTOM -->
 <div id="bottom">
@@ -185,6 +213,7 @@
   </div>
   <div style="padding:4px 16px 0; display:flex; gap:7px; overflow-x:auto" id="taleTrads"></div>
   <div class="sheet-body">
+    <div id="infoCard" class="icard hidden"></div>
     <div class="row" style="margin:10px 0 6px">
       <button class="play" id="talePlay" aria-label="Listen">▶</button>
       <div style="flex:1">
@@ -198,6 +227,7 @@
     </div>
     <div class="tale" id="taleText"></div>
     <div class="row" id="taleExtras" style="margin-top:14px; gap:8px; flex-wrap:wrap">
+      <button class="btn accent hidden" id="taleLink"></button>
       <button class="btn" id="taleNext">Next tradition ›</button>
       <button class="btn" id="taleDeep">Go deeper (online)</button>
     </div>
@@ -210,10 +240,9 @@
 <div class="sheet" id="tradSheet">
   <div class="grab"></div>
   <div class="sheet-h">
-    <div style="flex:1"><h2>Traditions</h2><div class="star-meta">Tick which lenses to show · <span id="tradCount"></span></div></div>
+    <div style="flex:1"><h2>Display &amp; traditions</h2><div class="star-meta">What to draw, and which lenses to offer · <span id="tradCount"></span></div></div>
     <button class="btn icon" id="tradClose" aria-label="Close">✕</button>
   </div>
-  <div style="padding:2px 16px 8px; display:flex; gap:7px; flex-wrap:wrap" id="tradPresets"></div>
   <div class="sheet-body" id="tradList"></div>
   <div style="padding:10px 16px; border-top:1px solid var(--line)">
     <label class="row" style="justify-content:space-between">
@@ -259,6 +288,8 @@
 <script src="art.js?v=19"></script>
 <script src="ephem.js?v=19"></script>
 <script src="magdecl.js?v=20"></script>
+<script src="stardata.js?v=21"></script>
+<script src="dso.js?v=21"></script>
 <script src="tales.js?v=19"></script>
 <script src="figtales.js?v=19"></script>
 <script>
@@ -302,7 +333,7 @@ TRADITIONS.sort((a,b)=>GROUP_ORDER.indexOf(a.group)-GROUP_ORDER.indexOf(b.group)
 const TRAD={}; TRADITIONS.forEach(t=>TRAD[t.id]=t);
 for(const cid in SC.cultures){const c=SC.cultures[cid]; c.hipFig={}; c.figs.forEach(f=>f.l.forEach(l=>l.forEach(h=>{if(!(h in c.hipFig))c.hipFig[h]=f;})));}
 function lensCult(){const t=TRAD[activeLens]; return (t&&t.cult&&SC.cultures[t.cult])||null;}
-let artStyle='meuris', showGhost=true, showArt=true, focusMode=true, focusKey=null, figColours=true;
+let artStyle='meuris', showGhost=true, showArt=true, showDSO=true, focusMode=true, focusKey=null, figColours=true;
 const PAL=["#F2B66D","#7FD1FF","#9BE7A8","#F7A1C4","#C3B1FF","#FF9E80","#E2E36F"], NPAL=["#FF6B5A","#FFC2B8","#C2382E","#FF917F","#FFE0DA","#9E2A23","#E24C40"], COLMAP={};
 // give neighbouring figures different colours (worked out once per lens)
 function figColourMap(lensId,figs){
@@ -317,10 +348,10 @@ function figColourMap(lensId,figs){
 }
 const OLD_KNOWN=['greek','arabic','chinese','hindu','hungarian','mikmaq','egyptian','norse','sami','belarusian','potawatomi','navajo','inuit','maya','aztec','maori','hawaiian_starlines','boorong','northern_andes'];
 // remembered choices (per browser; fine to lose)
-function saveState(){try{localStorage.setItem('skylens.v1',JSON.stringify({on:TRADITIONS.filter(t=>t.on).map(t=>t.id),all:TRADITIONS.map(t=>t.id),lens:activeLens,ghost:showGhost,art:showArt,artStyle:artStyle,focus:focusMode,cols:figColours,night:document.documentElement.classList.contains('night')}));}catch(e){}}
+function saveState(){try{localStorage.setItem('skylens.v1',JSON.stringify({on:TRADITIONS.filter(t=>t.on).map(t=>t.id),all:TRADITIONS.map(t=>t.id),lens:activeLens,ghost:showGhost,art:showArt,dso:showDSO,artStyle:artStyle,focus:focusMode,cols:figColours,night:document.documentElement.classList.contains('night')}));}catch(e){}}
 function loadState(){try{const st=JSON.parse(localStorage.getItem('skylens.v1')||'null'); if(!st)return;
   if(Array.isArray(st.on)&&st.on.length){const set=new Set(st.on), known=new Set(Array.isArray(st.all)?st.all:OLD_KNOWN);TRADITIONS.forEach(t=>{ if(known.has(t.id)) t.on=set.has(t.id); });} // lenses added since the last visit keep their default
-  if(typeof st.art==='boolean')showArt=st.art; if(st.artStyle==='sufi'||st.artStyle==='meuris')artStyle=st.artStyle; if(typeof st.focus==='boolean')focusMode=st.focus; if(typeof st.cols==='boolean')figColours=st.cols;
+  if(typeof st.art==='boolean')showArt=st.art; if(typeof st.dso==='boolean')showDSO=st.dso; if(st.artStyle==='sufi'||st.artStyle==='meuris')artStyle=st.artStyle; if(typeof st.focus==='boolean')focusMode=st.focus; if(typeof st.cols==='boolean')figColours=st.cols;
   if(st.lens&&TRAD[st.lens]&&TRAD[st.lens].on)activeLens=st.lens; if(typeof st.ghost==='boolean')showGhost=st.ghost;
   if(st.night){document.documentElement.classList.add('night');}}catch(e){}}
 
@@ -335,9 +366,15 @@ const byHip={}; SD.stars.forEach(s=>byHip[s[0]]=s); // [hip,ra,dec,mag,name]
 SC.extra.forEach(s=>{ if(!byHip[s[0]]){SD.stars.push(s);byHip[s[0]]=s;} });
 // catalogue positions are J2000; bring them to today's equinox so they agree with the clock and the planets
 if(window.precessFromJ2000){const now=new Date(); SD.stars.forEach(s=>{const q=precessFromJ2000(s[1],s[2],now); s[1]=q[0]; s[2]=q[1];});}
+// star facts (stardata.js) and deep-sky objects (dso.js); deep-sky positions are J2000 too
+const STARX=window.SKYSTARS||{}, STARNOTE=window.SKYSTARNOTES||{};
+const DSO=(window.SKYDSO||[]).map(o=>Object.assign({},o));
+if(window.precessFromJ2000){const now=new Date(); DSO.forEach(o=>{ const q=precessFromJ2000(o.r,o.d,now); o.r=q[0]; o.d=q[1];
+  if(o.pt) o.pt=o.pt.map(p=>{const t=precessFromJ2000(p[0],p[1],now); return [t[0],t[1],p[2]];}); });}
 // tale subjects (tales.js): one patch of sky, many traditions
 const SUBJ=window.SKYTALES||[]; const SUBJ_IAU={}, SUBJ_HIP={}, SUBJ_FIG={};
 SUBJ.forEach(s=>{(s.iau||[]).forEach(i=>SUBJ_IAU[i]=s);(s.hips||[]).forEach(h=>SUBJ_HIP[h]=s); for(const c in (s.figs||{})) s.figs[c].forEach(n=>SUBJ_FIG[c+'|'+n]=s);});
+const TALE_CONS=new Set(Object.keys(SUBJ_IAU).concat(["UMa"])).size; // constellations with written tales (the Great Bear's are built in)
 // Sun, Moon, planets (ephem.js), refreshed every few seconds
 let BODIES=[], bodiesT=0, bodyScreen={};
 const BODY_STYLE={Sun:{r:9,c:'#FFD866'},Moon:{r:8,c:'#EDEBE0'},Mercury:{r:3,c:'#C9C3B8'},Venus:{r:4.6,c:'#FFF6D6'},Mars:{r:3.6,c:'#FF9A76'},Jupiter:{r:4.2,c:'#F7DDB0'},Saturn:{r:3.6,c:'#EBD58F'}};
@@ -550,7 +587,9 @@ function draw(){
     ctx.globalAlpha=Math.max(.35,Math.min(1,1.1-0.12*s[3])); ctx.fill(); ctx.globalAlpha=1;
   }
   // Sun, Moon and planets
-  bodyScreen={}; const nightMode=document.documentElement.classList.contains('night');
+  bodyScreen={}; bodyBoxes=[]; const nightMode=document.documentElement.classList.contains('night');
+  // nebulae, clusters and galaxies (Messier, Caldwell and a few naked-eye extras), drawn at their true size
+  if(showDSO && !(aligning&&MODE==="live")) drawDSO(lst,B,focal,nightMode); else dsoScreen=[];
   for(const b of bodiesNow()){
     const aa=bodyAltAz(b,lst); if(aa.alt<-1) continue;
     const p=project(dirVec(aa.az,aa.alt),B,focal); if(!p||p.x<-30||p.x>W+30||p.y<-30||p.y>Hh+30) continue;
@@ -560,6 +599,7 @@ function draw(){
     ctx.beginPath();ctx.arc(p.x,p.y,r,0,7);ctx.fillStyle=col;ctx.fill();
     if(b.id!=="Sun"&&b.id!=="Moon"){ctx.globalAlpha=.5;ctx.lineWidth=1*DPR;ctx.strokeStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,r+3.5*DPR,0,7);ctx.stroke();ctx.globalAlpha=1;}
     ctx.fillStyle=col;ctx.font=`600 ${12*DPR}px ${FONT}`;ctx.fillText(b.name,p.x+r+6*DPR,p.y+4*DPR);
+    const rh=Math.max(r+3.5*DPR,9*DPR); bodyBoxes.push({x:p.x-rh,y:p.y-rh,w:2*rh+6*DPR+ctx.measureText(b.name).width,h:2*rh}); // keep pills and names off it
   }
   // tour: ring around the current stop
   if(MODE==="tour" && TOUR.stops.length){ const q=TOUR.stops[TOUR.i].pos(lst), p=project(dirVec(q.az,q.alt),B,focal);
@@ -600,7 +640,7 @@ function draw(){
   // star names: small and grey. The aimed-at figure's named stars get first claim on space; pills then avoid them
   const fstars={}; if(focus) for(const l of focus.segs) for(const h of l) fstars[h]=1;
   ctx.font=`500 ${10*DPR}px ${FONT}`;
-  const placed=[], hits=(a)=>placed.some(r=>a.x<r.x+r.w+5*DPR&&a.x+a.w+5*DPR>r.x&&a.y<r.y+r.h+3*DPR&&a.y+a.h+3*DPR>r.y);
+  const placed=uiRects().concat(bodyBoxes), hits=(a)=>placed.some(r=>a.x<r.x+r.w+5*DPR&&a.x+a.w+5*DPR>r.x&&a.y<r.y+r.h+3*DPR&&a.y+a.h+3*DPR>r.y); // the buttons and chips count as taken
   const nameBox=st=>({x:st.x+6*DPR,y:st.y-18*DPR,w:ctx.measureText(st.name).width,h:16*DPR});
   const fNames=Object.keys(fstars).map(h=>starScreen[h]).filter(st=>st&&st.name&&st.mag<3.2).sort((a,b)=>a.mag-b.mag), fDraw=[];
   for(const st of fNames){ const bx=nameBox(st); if(hits(bx))continue; placed.push(bx); fDraw.push(st); }
@@ -618,8 +658,15 @@ function draw(){
   if(fp&&!alg) fp.draw();
   ctx.font=`500 ${10*DPR}px ${FONT}`; ctx.fillStyle=dim;
   ctx.globalAlpha=.95; for(const st of fDraw){ if(aligning&&MODE==="live"&&st===starScreen[11767])continue; ctx.fillText(st.name,st.x+6*DPR,st.y-6*DPR);}
-  ctx.globalAlpha=.5; for(const hip in starScreen){const st=starScreen[hip]; if(!st.name||st.mag>=1.3||fstars[hip])continue; const bx=nameBox(st); if(hits(bx))continue; ctx.fillText(st.name,st.x+6*DPR,st.y-6*DPR);}
+  ctx.globalAlpha=.5; for(const hip in starScreen){const st=starScreen[hip]; if(!st.name||st.mag>=1.3||fstars[hip])continue; const bx=nameBox(st); if(hits(bx))continue; placed.push(bx); ctx.fillText(st.name,st.x+6*DPR,st.y-6*DPR);}
   ctx.globalAlpha=1;
+  if(dsoScreen.length && !alg) labelDSO(placed,hits,FONT,nightMode);
+  // ring whatever was tapped while its card is open
+  if(sel && (frameN&1)===0) selOpen=document.getElementById('taleSheet').classList.contains('up');
+  if(sel && selOpen){ let q=null, rr=13*DPR;
+    if(sel.hip!=null){ q=starScreen[sel.hip]; }
+    else if(sel.o){ q=dsoScreen.find(z=>z.o===sel.o); if(q) rr=Math.max(q.r+6*DPR,14*DPR); }
+    if(q && rr<Math.max(W,Hh)){ ctx.globalAlpha=.9; ctx.strokeStyle=accent; ctx.lineWidth=1.6*DPR; ctx.setLineDash([5*DPR,4*DPR]); ctx.beginPath(); ctx.arc(q.x,q.y,rr,0,7); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1; } }
   if(aligning && MODE==="live") drawAlignGuide(B,focal,lst,accent,accentInk,FONT,nightMode);
   // live read-out of where the view is aimed
   if((frameN++%8)===0){
@@ -740,6 +787,102 @@ function artTile(im,p00,p10,p01,p11,x0,y0,x1,y1){
   const sx=Math.max(0,x0-0.5), sy=Math.max(0,y0-0.5), sw=Math.min(im.width,x1+0.5)-sx, sh=Math.min(im.height,y1+0.5)-sy;
   if(sw>0&&sh>0) ctx.drawImage(im,sx,sy,sw,sh,sx,sy,sw,sh);
 }
+/* ---------- deep-sky objects: chart symbols at true angular size ---------- */
+// galaxies: ellipses · globular clusters: circle with a cross · open clusters: dashed circle · planetary nebulae: circle
+// with ticks · bright nebulae: rectangle · cluster with nebula: rectangle and dashed circle · supernova remnants: dotted
+// ellipse · dark nebulae, star clouds and chance alignments: dotted outlines in grey-blue
+let dsoScreen=[], sel=null, selOpen=false, bodyBoxes=[];
+const DSO_PAL={gx:['#FF9DB0','#FF8A7A'],nb:['#7FE3C1','#E0574B'],cl:['#FFD38A','#FFB8AE'],mu:['#A9B6D8','#B0625A']};
+function dsoCol(s,night){ const k=s==='gx'?'gx':(s==='gc'||s==='oc')?'cl':(s==='nb'||s==='cn'||s==='pn'||s==='snr')?'nb':'mu'; return DSO_PAL[k][night?1:0]; }
+function skyOffset(v,ra,dec,pa,rho){ // the point rho radians from v toward position angle pa (degrees, north through east)
+  const a=ra*D2R,d=dec*D2R,t=pa*D2R, sd=Math.sin(d), ct=Math.cos(t), st=Math.sin(t), c=Math.cos(rho), s=Math.sin(rho);
+  const dx=-sd*Math.cos(a)*ct-Math.sin(a)*st, dy=-sd*Math.sin(a)*ct+Math.cos(a)*st, dz=Math.cos(d)*ct;
+  return [v[0]*c+dx*s, v[1]*c+dy*s, v[2]*c+dz*s]; }
+function drawDSO(lst,B,focal,night){
+  dsoScreen=[]; if(!DSO.length) return;
+  const L=lst*D2R, cL=Math.cos(L), sL=Math.sin(L), ph=OBS.lat*D2R, cP=Math.cos(ph), sP=Math.sin(ph);
+  const enu=v=>{ const h=v[0]*cL+v[1]*sL; return [-(v[0]*sL-v[1]*cL), v[2]*cP-h*sP, v[2]*sP+h*cP]; };
+  const am=D2R/60, minR=4.5*DPR, pad=40*DPR;
+  ctx.lineWidth=1.15*DPR;
+  for(const o of DSO){
+    const v=radecV(o.r,o.d), e=enu(v); if(e[2]<-0.03) continue;
+    const p=project(e,B,focal); if(!p) continue;
+    const ra=(o.a||0)*am/2, rb=(o.b||o.a||0)*am/2, guess=ra*focal;
+    if(p.x<-guess-pad||p.x>W+guess+pad||p.y<-guess-pad||p.y>Hh+guess+pad) continue;
+    const col=dsoCol(o.s,night); ctx.strokeStyle=col; ctx.fillStyle=col; ctx.globalAlpha=.8;
+    if(o.pt){ // a pair (the Double Cluster): each drawn where it is
+      let rmax=minR; ctx.setLineDash([3*DPR,2.4*DPR]);
+      for(const q of o.pt){ const w=radecV(q[0],q[1]), s2=project(enu(w),B,focal); if(!s2) continue; const rr=Math.max(3.5*DPR,(q[2]/2)*am*focal);
+        ctx.beginPath(); ctx.arc(s2.x,s2.y,rr,0,7); ctx.stroke(); rmax=Math.max(rmax,Math.hypot(s2.x-p.x,s2.y-p.y)+rr); }
+      ctx.setLineDash([]); dsoScreen.push({o,x:p.x,y:p.y,r:rmax,col}); continue; }
+    // screen half-axes: major along the position angle, minor across it (so the outline follows the projection)
+    let A=null, Bv=null;
+    if(ra>0){ const pa=o.p||0, q1=project(enu(skyOffset(v,o.r,o.d,pa,ra)),B,focal), q2=project(enu(skyOffset(v,o.r,o.d,pa+90,rb)),B,focal);
+      if(q1&&q2){ A=[q1.x-p.x,q1.y-p.y]; Bv=[q2.x-p.x,q2.y-p.y]; } }
+    if(!A){ A=[minR,0]; Bv=[0,minR]; }
+    let la=Math.hypot(A[0],A[1]), lb=Math.hypot(Bv[0],Bv[1]);
+    if(la<minR){ const ratio=(o.b&&o.a)?o.b/o.a:1, lb2=Math.max(minR*ratio,2.6*DPR);
+      A=la>0.01?[A[0]*minR/la,A[1]*minR/la]:[minR,0]; Bv=lb>0.01?[Bv[0]*lb2/lb,Bv[1]*lb2/lb]:[0,lb2]; la=minR; lb=lb2; }
+    const r=Math.max(la,lb);
+    if(r>3*Math.max(W,Hh)) continue; // zoomed right inside something huge: no outline to draw
+    dsoShape(o.s,p,A,Bv,la,lb);
+    dsoScreen.push({o,x:p.x,y:p.y,r,col});
+  }
+  ctx.globalAlpha=1; ctx.setLineDash([]);
+}
+function dsoShape(s,p,A,Bv,la,lb){
+  const ell=()=>{ ctx.save(); ctx.transform(A[0],A[1],Bv[0],Bv[1],p.x,p.y); ctx.beginPath(); ctx.arc(0,0,1,0,7); ctx.restore(); };
+  const rect=()=>{ ctx.beginPath(); ctx.moveTo(p.x+A[0]+Bv[0],p.y+A[1]+Bv[1]); ctx.lineTo(p.x-A[0]+Bv[0],p.y-A[1]+Bv[1]); ctx.lineTo(p.x-A[0]-Bv[0],p.y-A[1]-Bv[1]); ctx.lineTo(p.x+A[0]-Bv[0],p.y+A[1]-Bv[1]); ctx.closePath(); };
+  const circ=(r)=>{ ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7); };
+  const dot=[1.6*DPR,2.5*DPR], dash=[3*DPR,2.4*DPR];
+  switch(s){
+    case 'gx': ell(); ctx.stroke(); break;
+    case 'gc': circ(la); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x-la,p.y); ctx.lineTo(p.x+la,p.y); ctx.moveTo(p.x,p.y-la); ctx.lineTo(p.x,p.y+la); ctx.stroke(); break;
+    case 'oc': ctx.setLineDash(dash); circ(la); ctx.stroke(); ctx.setLineDash([]); break;
+    case 'cn': rect(); ctx.stroke(); ctx.setLineDash(dash); circ(Math.max(2.5*DPR,0.62*Math.min(la,lb))); ctx.stroke(); ctx.setLineDash([]); break;
+    case 'nb': rect(); ctx.stroke(); break;
+    case 'pn': { const r=Math.max(la,3.6*DPR), t=3.2*DPR; circ(r); ctx.stroke(); ctx.beginPath();
+      ctx.moveTo(p.x+r,p.y); ctx.lineTo(p.x+r+t,p.y); ctx.moveTo(p.x-r,p.y); ctx.lineTo(p.x-r-t,p.y); ctx.moveTo(p.x,p.y+r); ctx.lineTo(p.x,p.y+r+t); ctx.moveTo(p.x,p.y-r); ctx.lineTo(p.x,p.y-r-t); ctx.stroke(); break; }
+    case 'snr': ctx.setLineDash(dot); ell(); ctx.stroke(); ctx.setLineDash([]); break;
+    case 'dn': ctx.setLineDash(dot); rect(); ctx.stroke(); ctx.setLineDash([]); break;
+    case 'gcen': { const r=6*DPR; circ(r); ctx.stroke(); ctx.beginPath(); for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ ctx.moveTo(p.x+dx*(r+2*DPR),p.y+dy*(r+2*DPR)); ctx.lineTo(p.x+dx*(r+7*DPR),p.y+dy*(r+7*DPR)); } ctx.stroke(); break; }
+    default: ctx.setLineDash(dot); circ(la); ctx.stroke(); ctx.setLineDash([]); // star cloud, asterism, double star
+  }
+}
+// names: always for objects with a common name (space permitting), others by brightness as you zoom in
+function labelDSO(placed,hits,FONT,night){
+  const fovD=fovNow()*R2D, lim=fovD>=60?6.5:fovD>=40?8.5:99, cap=fovD>=60?8:fovD>=40?12:20, mg=o=>o.m!=null?o.m:12;
+  const c=dsoScreen.filter(q=>q.o.n||mg(q.o)<=lim).sort((a,b)=>((b.o.n?1:0)-(a.o.n?1:0))||(mg(a.o)-mg(b.o)));
+  const sym=dsoScreen.filter(q=>q.r<26*DPR).map(q=>({q,x:q.x-q.r-2*DPR,y:q.y-q.r-2*DPR,w:2*q.r+4*DPR,h:2*q.r+4*DPR}));
+  const onSym=(b,self)=>sym.some(z=>z.q!==self&&b.x<z.x+z.w&&b.x+b.w>z.x&&b.y<z.y+z.h&&b.y+b.h>z.y);
+  ctx.font=`600 ${10*DPR}px ${FONT}`; ctx.textBaseline='middle'; ctx.lineJoin='round'; ctx.lineWidth=3*DPR; ctx.strokeStyle=night?'rgba(10,4,4,.8)':'rgba(11,16,32,.72)'; let n=0;
+  for(const q of c){ if(n>=cap) break; const o=q.o, t=o.n||o.i; if(o._lwD!==DPR){ o._lw=ctx.measureText(t).width; o._lwD=DPR; } // text widths cached
+    const w=o._lw, h=13*DPR, rr=Math.min(q.r,Hh*0.35);
+    let box=null;
+    for(const [x,y] of [[q.x+rr+4*DPR,q.y-h/2],[q.x-rr-4*DPR-w,q.y-h/2],[q.x-w/2,q.y+rr+2*DPR],[q.x-w/2,q.y-rr-2*DPR-h]]){
+      const b={x,y,w,h}; if(b.x<4*DPR||b.x+b.w>W-4*DPR||b.y<2*DPR||b.y+b.h>Hh-2*DPR) continue; if(!hits(b)&&!onSym(b,q)){box=b;break;} }
+    if(!box) continue; placed.push(box); n++;
+    ctx.globalAlpha=.92; ctx.strokeText(t,box.x,box.y+h/2); ctx.fillStyle=q.col; ctx.fillText(t,box.x,box.y+h/2); }
+  ctx.textBaseline='alphabetic'; ctx.globalAlpha=1;
+}
+// screen rectangles of the controls, so labels and pills don't land under them (device pixels; refreshed every few frames)
+let UIR=[], UIRf=-99;
+function uiRects(){
+  if(frameN-UIRf<10 && frameN>=UIRf) return UIR; UIRf=frameN; UIR=[];
+  for(const id of ['top','layers','bottom','alignBar','miniStop','statusTxt']){ // top and bottom bars run edge to edge, status bar and home indicator included
+    const el=document.getElementById(id); if(!el||el.classList.contains('hidden')) continue;
+    const r=el.getBoundingClientRect(); if(r.width<1||r.height<1) continue;
+    UIR.push({x:r.left*DPR,y:r.top*DPR,w:r.width*DPR,h:r.height*DPR});
+  }
+  return UIR;
+}
+function dsoHits(x,y){ // deep-sky objects under the finger, best first
+  const c=[], lim=0.45*Math.min(W,Hh);
+  for(const q of dsoScreen){ const d=Math.hypot(q.x-x,q.y-y); if(d<=(q.r>lim?22*DPR:Math.max(q.r,22*DPR))) c.push({q,d,on:(d<=Math.max(Math.min(q.r,lim),10*DPR))?1:0}); }
+  const mg=o=>o.m!=null?o.m:12;
+  c.sort((a,b)=>(b.on-a.on)||((b.q.o.n?1:0)-(a.q.o.n?1:0))||(mg(a.q.o)-mg(b.q.o))||(a.d-b.d));
+  return c;
+}
 function conLines(iau){const c=SD.cons.find(x=>x.iau===iau);return c?c.lines:[];}
 requestAnimationFrame(draw);
 
@@ -775,6 +918,12 @@ cv.addEventListener('click',ev=>{
   for(const hip in starScreen){const s=starScreen[hip]; if(s.mag>90)continue; const d=Math.hypot(s.x-x,s.y-y);
     if(d<bd){bd=d;best=+hip;}
     if(cult&&cult.hipFig[hip]&&d<fd){fd=d;fb=+hip;}}
+  // a star right under the finger wins; then a nebula, cluster or galaxy under it; then the nearest star
+  const dc=showDSO?dsoHits(x,y):[], inside=dc.filter(z=>z.on).map(z=>z.q.o);
+  // a named or bright star under the finger wins (its card links to whatever it sits in); a faint one inside a nebula or
+  // cluster outline gives way to the nebula or cluster (the Trapezium star at the heart of the Orion Nebula, say)
+  if(best!=null && bd<14*DPR && (!inside.length || byHip[best][4] || byHip[best][3]<=3.5)) return openTaleForHip(best, inside);
+  if(dc.length) return openDSO(dc[0].q.o, dc.slice(0,6).map(z=>z.q.o));
   if(fb!=null && fd<44*DPR) openTaleForHip(fb);
   else if(best!=null && bd<44*DPR) openTaleForHip(best);
 });
@@ -803,7 +952,12 @@ document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{
 $('btnLock').onclick=()=>{ if(MODE!=="live"||!haveOrient)return; locked=!locked; lockedView=locked?smoothBasis(liveBasis()):null; smB=null; $('btnLock').classList.toggle('onb',locked); };
 function setNight(on){ document.documentElement.classList.toggle('night',on); $('btnNight').classList.toggle('onb',on); const c=$('nightToggle'); if(c) c.checked=on; saveState(); }
 $('btnNight').onclick=()=>setNight(!document.documentElement.classList.contains('night'));
-$('btnGreek').onclick=()=>{ showGhost=!showGhost; $('btnGreek').classList.toggle('onb',showGhost); saveState(); };
+// one-tap layer switches (right edge); the same switches are in ☰ under Display
+function flash(t){ setStatus(t); statusHold=frameN+110; }
+function syncLayers(){ $('btnArt').classList.toggle('onb',showArt); $('btnDSO').classList.toggle('onb',showDSO); $('btnGreek').classList.toggle('onb',showGhost); }
+$('btnGreek').onclick=()=>{ showGhost=!showGhost; syncLayers(); saveState(); flash(showGhost?'Greek figures shown behind this tradition':'Greek figures hidden'); };
+$('btnArt').onclick=()=>{ showArt=!showArt; syncLayers(); saveState(); flash(showArt?'Constellation pictures on':'Constellation pictures off'); };
+$('btnDSO').onclick=()=>{ showDSO=!showDSO; syncLayers(); saveState(); flash(showDSO?'Nebulae, clusters and galaxies on':'Nebulae, clusters and galaxies off'); };
 
 // lenses
 function renderLenses(){const el=$('lenses');el.innerHTML='';
@@ -812,7 +966,7 @@ function renderLenses(){const el=$('lenses');el.innerHTML='';
   const act=el.querySelector('.chip.on'); if(act&&act.scrollIntoView){try{act.scrollIntoView({block:'nearest',inline:'center'});}catch(e){}}
   if(!TRAD[activeLens]||!TRAD[activeLens].on){const f=TRADITIONS.find(t=>t.on); if(f){activeLens=f.id;return renderLenses();}}
 }
-loadState(); renderLenses();
+loadState(); renderLenses(); syncLayers();
 
 // align overlay
 const FRAMED=(()=>{try{return window.self!==window.top;}catch(e){return true;}})();
@@ -971,7 +1125,7 @@ let curCon="UMa", speaking=false, rate=1.0;
 // "Next tradition" and "Go deeper" on the tale card
 let taleNav=null;
 function setTaleExtras(nav,links){
-  curAudio=null; taleNav=nav; $('taleNext').classList.toggle('hidden',!(nav&&nav.ids.length>1));
+  curAudio=null; taleNav=nav; $('taleNext').classList.toggle('hidden',!(nav&&nav.ids.length>1)); $('taleLink').classList.add('hidden');
   const dl=$('deepList'); dl.classList.add('hidden'); dl.innerHTML=''; $('taleDeep').classList.toggle('hidden',!(links&&links.length)); $('taleDeep').textContent='Go deeper (online)';
   if(links&&links.length){ const n=document.createElement('div'); n.className='pre'; n.style.marginBottom='6px'; n.textContent='SOURCES AND FURTHER READING — open in your browser'; dl.appendChild(n);
     links.forEach(([t,u])=>{const a=document.createElement('a'); a.href=u; a.target='_blank'; a.rel='noopener'; a.textContent=t+' ↗'; a.style.cssText='display:block;padding:9px 0;font-size:14px;border-bottom:1px solid var(--line);text-decoration:none'; dl.appendChild(a);}); }
@@ -979,8 +1133,9 @@ function setTaleExtras(nav,links){
 $('taleNext').onclick=()=>{ if(!taleNav)return; const i=taleNav.ids.indexOf(taleNav.cur); taleNav.go(taleNav.ids[(i+1)%taleNav.ids.length]); document.querySelector('#taleSheet .sheet-body').scrollTop=0; };
 $('taleDeep').onclick=()=>{ const dl=$('deepList'), open=dl.classList.toggle('hidden'); $('taleDeep').textContent=open?'Go deeper (online)':'Hide links'; if(!open){try{dl.scrollIntoView({block:'nearest'});}catch(e){}} };
 const UMA_DEEPER=[["The Big Dipper — Wikipedia","https://en.wikipedia.org/wiki/Big_Dipper"],["Göncölszekér (Magyar Néprajzi Lexikon)","https://mek.oszk.hu/02100/02115/html/2-691.html"],["Göncöl's cart in Hungarian folklore","https://multicoloreddiary.blogspot.com/2016/01/folklore-thursday-celestial-transport.html?m=1"],["Native American night sky (Space.com)","https://www.space.com/native-american-night-sky"],["An introduction to Arabian astronomy (D. Adams)","https://skyatnightmagazine.com/advice/skills/introduction-arabian-astronomy"]];
-function starLabel(hip){const s=byHip[hip]; return (s&&s[4])?s[4]:("HIP "+hip);}
-function openTaleForHip(hip){
+function starLabel(hip){const s=byHip[hip]; if(s&&s[4]) return s[4]; const X=window.SKYSTARS&&SKYSTARS[hip]; return (X&&X[8])?X[8].split(' · ')[0]:("HIP "+hip);}
+function openTaleForHip(hip,near){ openTaleForHip0(hip); showStarCard(hip,near); }
+function openTaleForHip0(hip){
   const cult=lensCult();
   if(UMA_HIPS.has(hip) && UMA_TALES[activeLens]) return openTale("UMa",hip); // the Dipper has full tales
   if(cult){ const f=cult.hipFig[hip]; if(f){ const sj=SUBJ_FIG[TRAD[activeLens].cult+'|'+f.n], ftl=window.SKYFIGTALES&&SKYFIGTALES[TRAD[activeLens].cult]&&SKYFIGTALES[TRAD[activeLens].cult][f.n]; return (sj&&(sj.tales[activeLens]||!ftl))?openSubject(sj,{fig:f,hip}):openFigure(TRAD[activeLens],cult,f,hip); } }
@@ -990,7 +1145,7 @@ function openTaleForHip(hip){
   // a star outside every figure
   $('taleCon').textContent=starLabel(hip); $('taleSub').textContent="Magnitude "+byHip[hip][3]; $('taleTrads').innerHTML='';
   setTaleExtras(null,null);
-  $('taleTitle').textContent="A star on its own"; $('taleStatus').textContent="● Not part of a figure in this lens";
+  hideCard(); $('taleTitle').textContent="Not part of a figure"; $('taleStatus').textContent="● Not part of a figure in this lens";
   $('taleText').textContent="This star doesn't belong to any figure drawn in the "+TRAD[activeLens].name+" lens."+(cult&&cult.stars[hip]?"\n\nIn this tradition it is called: "+cult.stars[hip]:""); $('nameLayer').innerHTML='';
   $('taleSheet').classList.add('up');
 }
@@ -998,7 +1153,7 @@ function openTaleForHip(hip){
 let curSubj=null, curCtx=null;
 function subjTabs(s){ let k=Object.keys(s.tales).filter(id=>id==="more"||(TRAD[id]&&TRAD[id].on)); if(k.filter(x=>x!=="more").length===0) k=Object.keys(s.tales); return k; }
 function openSubject(s,ctx){
-  curSubj=s; curCtx=ctx||{}; const T=TRAD[activeLens], f=curCtx.fig;
+  hideCard(); curSubj=s; curCtx=ctx||{}; const T=TRAD[activeLens], f=curCtx.fig;
   if(f){ $('taleCon').textContent=f.v||f.n; $('taleSub').textContent=(f.v&&f.n?f.n+" · ":"")+T.name+" · "+s.name; }
   else { const la=(s.iau&&s.iau[0])?LATIN[s.iau[0]]:null; $('taleCon').textContent=la?la[0]:s.name; $('taleSub').textContent=s.sub; }
   const tabs=subjTabs(s); showSubjTale(tabs.includes(activeLens)?activeLens:(tabs.includes("greek")?"greek":tabs[0]));
@@ -1028,7 +1183,7 @@ const BODY_TEXT={
  Jupiter:"Jupiter is a steady cream-white light, brighter than any star. It takes twelve years to circle the zodiac, spending about a year in each constellation.",
  Saturn:"Saturn is a steady pale-gold light, about as bright as the brighter stars. It takes nearly thirty years to circle the zodiac."};
 function openBody(id){
-  const b=bodiesNow().find(x=>x.id===id); if(!b)return; if(speaking)stopSpeak(); setTaleExtras(null,null);
+  const b=bodiesNow().find(x=>x.id===id); if(!b)return; if(speaking)stopSpeak(); setTaleExtras(null,null); hideCard();
   const aa=bodyAltAz(b,lstDeg(new Date(),OBS.lon));
   $('taleCon').textContent=(id==="Sun"||id==="Moon"?"The ":"")+b.name; $('taleTrads').innerHTML='';
   $('taleSub').textContent=aa.alt>0?("Now "+Math.round(aa.alt)+"° up in the "+card16(aa.az)):"Below the horizon right now";
@@ -1037,8 +1192,158 @@ function openBody(id){
   $('taleText').textContent=BODY_TEXT[id]+(id!=="Sun"&&id!=="Mercury"?"\n\nYou can align the phone on it: tap ✛ and choose it under “Align on.”":"");
   $('nameLayer').innerHTML=''; $('taleSheet').classList.add('up');
 }
+/* ---------- fact cards: stars, nebulae, clusters and galaxies ---------- */
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function sigf(x,n){ // n significant figures, with thousands separators
+  if(!x) return '0'; const e=Math.floor(Math.log10(Math.abs(x)))-n+1, v=e>=0?Math.round(x/Math.pow(10,e))*Math.pow(10,e):Math.round(x*Math.pow(10,-e))/Math.pow(10,-e);
+  return v>=1e6?(+(v/1e6).toPrecision(n)).toLocaleString('en-US',{maximumFractionDigits:3})+' million':v.toLocaleString('en-US',{maximumFractionDigits:6}); }
+const minus=t=>String(t).replace(/^-/,'−');
+function wikiURL(q){ return 'https://en.wikipedia.org/wiki/Special:Search?search='+encodeURIComponent(q)+'&go=Go'; }
+// when the light we see now set out
+function lightLeft(ly,approx){ const t=lightLeft0(ly); return approx?t.replace(/^(around|about) /,'roughly '):t; }
+function lightLeft0(ly){
+  const y=new Date().getFullYear()-ly;
+  if(ly<12000){ const step=ly<100?1:ly<1000?10:100, yy=Math.round(y/step)*step;
+    if(yy>0) return 'around '+(yy<1000?'AD ':'')+yy+(ly<40?' ('+Math.round(ly)+' years ago)':'');
+    return 'around '+sigf(1-yy,2)+' BC'; }
+  return 'about '+sigf(ly,2)+' years ago';
+}
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function visText(ra,dec){ // [how it moves from here, where it is now, when it is best placed]
+  const lat=OBS.lat, aa=altaz(ra,dec,lat,lstDeg(new Date(),OBS.lon));
+  const never=lat>=0?dec<lat-90:dec>lat+90, circ=lat>=0?dec>90-lat:dec<-90-lat;
+  const hmax=90-Math.abs(lat-dec);
+  const main=never?'Never rises at your latitude':circ?'Never sets from here: it circles the pole':('Rises and sets; up to '+Math.round(hmax)+'° high, '+(Math.abs(lat-dec)<1?'overhead':'due '+(dec<lat?'south':'north')));
+  const now=aa.alt>0?('now '+Math.round(aa.alt)+'° up in the '+card16(aa.az)):'below the horizon now';
+  let best=''; if(!never){ const off=(((ra+180)%360)+360)%360/360*365.2422, d=new Date(Date.UTC(new Date().getUTCFullYear(),2,20)+off*864e5), dd=d.getUTCDate();
+    best='highest at midnight in '+(dd<=10?'early ':dd<=20?'mid-':'late ')+MONTHS[d.getUTCMonth()]; }
+  return [main, now, best].filter(Boolean);
+}
+const frow=(k,v,g)=>`<div class="frow"><b>${k}</b><div>${v}${g?'<div class="g">'+g+'</div>':''}</div></div>`;
+let cardOpen=true; try{ cardOpen=localStorage.getItem('skylens.card')!=='0'; }catch(e){}
+function showCard(html,fixed){
+  const c=$('infoCard'), body=c.parentNode; c.innerHTML=html; c.className='icard'+(fixed?' fixed':(cardOpen?' open':''));
+  if(fixed) body.insertBefore(c,$('taleExtras')); else if(body.firstChild!==c) body.insertBefore(c,body.firstChild);
+  const h=c.querySelector('.icard-h');
+  if(h&&!fixed) h.onclick=()=>{ cardOpen=!c.classList.contains('open'); c.classList.toggle('open',cardOpen); try{localStorage.setItem('skylens.card',cardOpen?'1':'0');}catch(e){} };
+  return c;
+}
+function hideCard(){ const c=$('infoCard'); c.className='icard hidden'; c.innerHTML=''; sel=null; }
+// plain-language reading of a spectral type
+const GREEKL={'α':'Alpha','β':'Beta','γ':'Gamma','δ':'Delta','ε':'Epsilon','ζ':'Zeta','η':'Eta','θ':'Theta','ι':'Iota','κ':'Kappa','λ':'Lambda','μ':'Mu','ν':'Nu','ξ':'Xi','ο':'Omicron','π':'Pi','ρ':'Rho','σ':'Sigma','τ':'Tau','υ':'Upsilon','φ':'Phi','χ':'Chi','ψ':'Psi','ω':'Omega'};
+function starKind(sp){
+  if(!sp) return null; const f=sp.split(/[,+]/)[0].trim();
+  if(/^D[ABOQZCX]/.test(f)) return {name:'White dwarf',gloss:'the hot, compact core left behind by a Sun-like star'};
+  if(/^W[NCRO]/.test(f)) return {name:'Wolf–Rayet star',gloss:'a very hot, massive star blowing off its outer layers'};
+  const m=f.match(/^(sd)?([OBAFGKMCNRS])/); if(!m) return null;
+  if('CNR'.includes(m[2])) return {name:'Carbon star',gloss:'a cool giant whose atmosphere is rich in carbon'};
+  if(m[2]==='S') return {name:'S-type star',gloss:'a cool giant with zirconium oxide in its atmosphere'};
+  const col={O:'Blue',B:'Blue-white',A:'White',F:'Yellow-white',G:'Yellow',K:'Orange',M:'Red'}[m[2]];
+  if(m[1]) return {name:col+' subdwarf',gloss:'an old star poor in heavy elements, a little fainter than a main-sequence star'};
+  const lc=(f.match(/(?:^|[^A-Za-z])(Ia0|Ia\+|0-Ia|Iab|Ia|Ib|III|II|IV|VI|V)/)||[])[1];
+  const H=['hypergiant','one of the most luminous and unstable kinds of star'], S=['supergiant','a massive star late in its life, enormously luminous'];
+  const L={Ia0:H,'Ia+':H,'0-Ia':H,Iab:S,Ia:S,Ib:S,II:['bright giant','between a giant and a supergiant in luminosity'],III:['giant','an older star that has used up the hydrogen in its core and swollen'],
+    IV:['subgiant','beginning to run out of hydrogen in its core and to swell'],V:['main-sequence star','fusing hydrogen in its core, like the Sun'],VI:['subdwarf','an old star poor in heavy elements, a little fainter than a main-sequence star']}[lc];
+  return L?{name:col+' '+L[0],gloss:L[1]}:{name:col+' star',gloss:''};
+}
+function starCardHTML(hip,near){
+  const s=byHip[hip]; if(!s) return ''; const X=STARX[hip]||null, name=s[4]||'', des=(X&&X[8])||'';
+  const dparts=des?des.split(' · '):[], title=name||dparts[0]||('HIP '+hip), desShow=(name?dparts:dparts.slice(1)).join(' · ');
+  const kind=X?starKind(X[2]):null, dist=X?X[0]:null, T=X?X[5]:null, Lsun=X?X[6]:null, Rr=X?X[7]:null, Mv=X?X[4]:null, vr=X?X[9]:null, multi=X?X[10]:0;
+  const bigVar=!!(vr&&(vr[1]-vr[0])>2), dtxt=d=>(d<10?d.toFixed(1):Math.round(d).toLocaleString('en-US'));
+  const sum=[kind?kind.name:'', dist?dtxt(dist)+' light-years':'', (Lsun&&!bigVar)?sigf(Lsun,2)+'× the Sun’s light':''].filter(Boolean).join(' · ')||('Magnitude '+minus(s[3]));
+  const R=[];
+  if(near&&near.length) R.push(frow('Also here',near.map((o,i)=>`<a href="#" data-near="${i}">${esc(o.n?o.n+(dsoId(o)?' ('+o.i+')':''):o.i)} ›</a>`).join('<br>'),''));
+  if(kind) R.push(frow('Type',esc(kind.name)+' <span class="g">· '+esc(X[2])+'</span>',kind.gloss));
+  else if(X&&X[2]) R.push(frow('Type','Spectral type '+esc(X[2]),''));
+  if(dist) R.push(frow('Distance',dtxt(dist)+' light-years',(X[1]==='g'?'Gaia DR3 parallax':X[1]==='h'?'Hipparcos parallax':'published measurement')+' · its light set out '+lightLeft(dist)));
+  R.push(frow('Brightness','Magnitude '+minus(s[3])+' from here',(Mv!=null&&!bigVar)?'absolute magnitude '+minus(Mv.toFixed(1))+': how bright it would look from 32.6 light-years':''));
+  if(vr) R.push(frow('Variable','Between magnitude '+minus(vr[0])+' and '+minus(vr[1]),''));
+  if(Lsun&&!bigVar) R.push(frow('Luminosity','≈ '+sigf(Lsun,2)+' × the Sun','estimate'+(multi?' · combined light of the system':'')));
+  if(T&&!bigVar) R.push(frow('Temperature','≈ '+sigf(T,2)+' K','at the surface, estimate · the Sun: 5,772 K'));
+  if(Rr&&!bigVar) R.push(frow('Size','≈ '+sigf(Rr,2)+' × the Sun’s radius','estimate'));
+  else if(multi&&Lsun&&!bigVar) R.push(frow('Size','Not estimated','its light comes from two or more stars together'));
+  if(bigVar&&!T) R.push(frow('Estimates','Not made','its brightness swings too far for one value'));
+  const v=visText(s[1],s[2]); R.push(frow('From here',esc(v[0]),esc(v.slice(1).join(' · '))));
+  const bay=dparts.find(t=>GREEKL[t[0]]), q=bay?bay.replace(/^(.)([¹²³⁴⁵⁶⁷⁸⁹]?)/,(m0,g,sup)=>GREEKL[g]+(sup?' '+('¹²³⁴⁵⁶⁷⁸⁹'.indexOf(sup)+1):'')):(name?name+' star':'HIP '+hip);
+  const src='Distance: '+(X?(X[1]==='g'?'Gaia DR3 via the AT-HYG catalogue':X[1]==='h'?'Hipparcos via the HYG database':'published value, as listed in Wikipedia’s List of brightest stars'):'—')+'. Temperature, luminosity and size are estimates worked out from the spectral type, colour and distance; they ignore dust and can be off by tens of percent. <a href="'+wikiURL(q)+'" target="_blank" rel="noopener">Wikipedia ↗</a>';
+  const note=STARNOTE[hip]?`<div class="fnote" style="border-top:none; padding-top:0">${esc(STARNOTE[hip])}</div>`:'';
+  return `<div class="icard-h"><div style="flex:1"><div class="icard-t">★ ${esc(title)}${desShow?' <span class="des">'+esc(desShow)+'</span>':''}</div><div class="icard-s">${esc(sum)}</div></div><span class="icard-x">▾</span></div><div class="icard-b">${note}${R.join('')}<div class="fsrc">${src}</div></div>`;
+}
+function showStarCard(hip,near){
+  const html=starCardHTML(hip,near); if(!html){ hideCard(); return; }
+  const c=showCard(html,false); sel={hip};
+  c.querySelectorAll('[data-near]').forEach(a=>a.onclick=ev=>{ ev.preventDefault(); const o=near[+a.dataset.near]; openDSO(o,near); });
+  document.querySelector('#taleSheet .sheet-body').scrollTop=0;
+}
+// a sentence on what kind of object it is
+const DSO_GLOSS=[
+ [/supernova/i,'The expanding debris of a star that exploded as a supernova.'],
+ [/globular/i,'A globular cluster: a dense ball of many thousands to millions of very old stars, orbiting in the outer halo of the Milky Way. Globular clusters are among the oldest objects in our galaxy.'],
+ [/planetary/i,'A planetary nebula: the outer layers of a dying Sun-like star, cast off into space and lit by the hot core left behind, which will cool as a white dwarf. The name is historical: through early telescopes these looked like the discs of planets.'],
+ [/dark nebula/i,'A dark nebula: a cloud of cold dust and gas dense enough to block the light of the stars and glowing gas behind it.'],
+ [/star cloud|optical double|asterism|centre of the milky way|interacting/i,''],
+ [/H II region.*cluster|nebula with cluster|cluster and nebula/i,'A cloud of gas and dust together with the young star cluster that formed inside it; ultraviolet light from the hottest new stars makes the gas glow.'],
+ [/H II region/i,'A cloud of hydrogen where stars are being born; ultraviolet light from hot young stars inside makes the gas glow.'],
+ [/diffuse nebula/i,'A cloud of dust shining by the reflected light of young stars embedded in it.'],
+ [/^nebula$/i,'A cloud of interstellar gas and dust, shining by the light of stars in or near it.'],
+ [/open cluster/i,'An open cluster: a family of stars born together from the same cloud of gas, loosely held by gravity and slowly drifting apart.'],
+ [/starburst/i,'A starburst galaxy: one forming new stars at an exceptionally high rate.'],
+ [/barred spiral/i,'A barred spiral galaxy: a separate system of stars far beyond the Milky Way, whose spiral arms start at the ends of a bar of stars across its centre. Our own galaxy is a barred spiral too.'],
+ [/spiral/i,'A spiral galaxy: a separate system of stars far beyond the Milky Way, with a bright central bulge and spiral arms where new stars form.'],
+ [/dwarf (elliptical|spheroidal)/i,'A dwarf galaxy: a small, faint system of mostly old stars.'],
+ [/elliptical or lenticular/i,'A large galaxy of mostly old stars, classed between elliptical and lenticular.'],
+ [/elliptical/i,'An elliptical galaxy: a smooth, rounded system of mostly old stars, with little gas left to make new ones.'],
+ [/lenticular/i,'A lenticular galaxy: a disc galaxy without prominent spiral arms, between a spiral and an elliptical in form.'],
+ [/irregular/i,'An irregular galaxy: one without a clear spiral or elliptical shape.']];
+function dsoGloss(o){ for(const [re,t] of DSO_GLOSS) if(re.test(o.k)) return t; return ''; }
+const DSO_SEE={C99:'Naked eye from a dark site in the southern hemisphere',B33:'Long-exposure photographs; very hard to see by eye',GC:'Hidden by dust at visible wavelengths; seen by radio, infrared and X-ray telescopes'};
+function dsoSee(o){
+  if(DSO_SEE[o.i]) return DSO_SEE[o.i]; const m=o.m; if(m==null) return '';
+  return m<=4.5?'Naked eye from a dark site':m<=6?'Naked eye only under very dark skies; easy in binoculars':m<=8.5?'Binoculars or a small telescope':m<=10.5?'A small telescope under dark skies':'A medium-sized telescope, or long-exposure photos';
+}
+function dsoWikiQ(o){ if(/^M\d/.test(o.i)) return 'Messier '+o.i.slice(1);
+  const W={LMC:'Large Magellanic Cloud',SMC:'Small Magellanic Cloud',GC:'Galactic Center',Mel20:'Alpha Persei Cluster',Mel111:'Coma Star Cluster',Cr399:"Brocchi's Cluster",B33:'Horsehead Nebula',C14:'Double Cluster',C41:'Hyades (star cluster)',C99:'Coalsack Nebula',C9:'Cave Nebula'};
+  return W[o.i]||((o.x||'').split(' · ')[0])||o.n||('Caldwell '+o.i.slice(1)); }
+function dsoCardHTML(o){
+  const R=[], mid=o.dl?(o.dl[0]+o.dl[1])/2:null, range=o.dl&&o.dl[1]>o.dl[0];
+  if(o.dl) R.push(frow('Distance',(range?'':'≈ ')+esc(o.ds)+' light-years',(o.dsrc?esc(o.dsrc)+' · ':'')+'its light set out '+lightLeft(mid,range)));
+  else if(o.s==='ast'||o.s==='ds') R.push(frow('Distance','Not one distance','its stars lie at different distances'));
+  const a=o.a, b=o.b||o.a;
+  if(a&&o.dl&&!['ast','ds','sc','gcen'].includes(o.s)){ const k=a*D2R/60, lo=o.dl[0]*k, hi=o.dl[1]*k;
+    R.push(frow('True size','≈ '+(hi/lo>1.25?sigf(lo,2)+'–'+sigf(hi,2):sigf((lo+hi)/2,2))+' light-years across','from its apparent size and distance')); }
+  if(o.pt) R.push(frow('Apparent size','Two clusters, each '+Math.round(o.pt[0][2])+'′ across','together about twice the full Moon’s width'));
+  else if(a){ const deg=a>=120, f=x=>deg?(x/60).toFixed(1).replace(/\.0$/,'')+'°':(x>=10?Math.round(x):x.toFixed(1))+'′', rt=a/31;
+    R.push(frow('Apparent size',(b&&Math.abs(b-a)>0.01?f(a)+' × '+f(b):f(a)+' across'),rt>=1.4?'about '+(rt<10?rt.toFixed(1).replace(/\.0$/,''):Math.round(rt))+'× the full Moon’s width':rt>=0.7?'about as wide as the full Moon':'about 1/'+Math.round(31/a)+' of the full Moon’s width')); }
+  if(o.m!=null) R.push(frow('Brightness','Magnitude '+minus(o.m.toFixed(1)),(['gx','nb','cn','pn','snr','dn'].includes(o.s)&&a>2)?'its light is spread over its area, so it looks fainter than a star of the same magnitude':''));
+  const see=dsoSee(o); if(see) R.push(frow('To see it',esc(see),''));
+  if(o.al) R.push(frow('Also called',esc(o.al),''));
+  const v=visText(o.r,o.d); R.push(frow('From here',esc(v[0]),esc(v.slice(1).join(' · '))));
+  return `<div class="icard-b">${R.join('')}</div>`;
+}
+const dsoId=o=>/^[MC]\d/.test(o.i)?o.i:''; // Messier and Caldwell numbers are shown; the extras' internal keys are not
+const dsoChip=o=>o.n?(dsoId(o)?dsoId(o)+' · '+o.n:o.n):o.i;
+function openDSO(o,list){
+  if(speaking)stopSpeak(); setTaleExtras(null,[[(o.n||o.i)+' on Wikipedia',wikiURL(dsoWikiQ(o))]]);
+  const la=LATIN[o.c], con=la?la[0]:o.c;
+  $('taleCon').textContent=o.n||o.i;
+  $('taleSub').textContent=[o.n?dsoId(o):'',o.x||'','in '+con].filter(Boolean).join(' · ');
+  const el=$('taleTrads'); el.innerHTML='';
+  if(list&&list.length>1) list.forEach(q=>{ const b=document.createElement('button'); b.className='chip'+(q===o?' on':''); b.textContent=dsoChip(q); b.onclick=()=>openDSO(q,list); el.appendChild(b); });
+  // the tales of the constellation it lies in
+  const tl=$('taleLink'), sj=(o.i==='M45'&&SUBJ_KEY.ple)?SUBJ_KEY.ple:SUBJ_IAU[o.c];
+  if(o.i==='M45'&&sj){ tl.textContent='Tales of the Pleiades ›'; tl.onclick=()=>openSubject(sj,{}); tl.classList.remove('hidden'); }
+  else if(o.c==='UMa'){ tl.textContent='Tales of the Great Bear ›'; tl.onclick=()=>openTale('UMa'); tl.classList.remove('hidden'); }
+  else if(sj){ tl.textContent='Tales of '+con+' ›'; tl.onclick=()=>openSubject(sj,{}); tl.classList.remove('hidden'); }
+  $('taleTitle').textContent=o.k; $('taleStatus').textContent='● Catalogue data · notes from published sources';
+  updVoiceChip();
+  $('taleText').textContent=[o.note||'',dsoGloss(o)].filter(Boolean).join('\n\n');
+  showCard(dsoCardHTML(o),true); sel={o};
+  $('nameLayer').innerHTML='<div class="pre" style="line-height:1.5">Position, size and brightness: HYG deep-sky catalogue, from the Historically Corrected NGC (CC BY-SA 2.5). Type and distance: Wikipedia’s Messier object and Caldwell catalogue tables (CC BY-SA 4.0), compiled from published measurements'+(o.dsrc?'; this distance: '+esc(o.dsrc):'')+'.</div>';
+  $('taleSheet').classList.add('up'); document.querySelector('#taleSheet .sheet-body').scrollTop=0;
+}
 function openFigure(T,cult,f,hip){
-  if(speaking)stopSpeak(); setTaleExtras(null,null);
+  if(speaking)stopSpeak(); setTaleExtras(null,null); hideCard();
   $('taleCon').textContent=f.v||f.n; $('taleSub').textContent=(f.v&&f.n?f.n+" · ":"")+T.name; $('taleTrads').innerHTML='';
   $('taleTitle').textContent="A figure of the "+T.name+" sky"; $('taleStatus').textContent=cult.hand?"● Plotted by hand from published identifications":"● Figure verified against Stellarium's sky-culture data";
   let t=""; if(hip!=null&&cult.stars[hip]) t+=starLabel(hip)+" in this tradition: "+cult.stars[hip]+"\n\n"; else if(hip!=null&&byHip[hip]&&byHip[hip][4]) t+="Star tapped: "+byHip[hip][4]+"\n\n";
@@ -1052,7 +1357,7 @@ function openFigure(T,cult,f,hip){
   $('taleSheet').classList.add('up');
 }
 function openTale(iau,hip){
-  curCon=iau;
+  hideCard(); curCon=iau;
   const sheet=$('taleSheet');
   if(iau==="UMa"){
     $('taleCon').textContent="Ursa Major"; $('taleSub').textContent="The Great Bear · circumpolar from here";
@@ -1065,7 +1370,7 @@ function openTale(iau,hip){
     $('taleTitle').textContent="Greek / IAU figure";
     $('taleStatus').textContent="● Star names from IAU · fuller tales coming";
     let extra=""; if(hip&&byHip[hip]&&byHip[hip][4]) extra="Brightest tapped: "+byHip[hip][4]+"\n\n";
-    $('taleText').textContent=extra+"This constellation shows its Greek/IAU figure and star names; its tales haven't been written yet. Full tales so far: the Big Dipper, Cassiopeia, Cygnus, Lyra, Aquila, the Pleiades and Orion. Try the Tour to be taken to the ones that are up now.";
+    $('taleText').textContent=extra+"This constellation shows its Greek/IAU figure and star names; its tales haven't been written yet ("+TALE_CONS+" of the 88 constellations have tales so far, plus the Pleiades). Tap any star for its facts, or try the Tour, which visits the constellations with tales that are up now.";
     $('nameLayer').innerHTML='';
   }
   sheet.classList.add('up');
@@ -1129,42 +1434,40 @@ $('taleVoice').onclick=()=>{ if(cTTS||(curAudio&&!audioBad[curAudio])||devVoices
 
 /* ---------- traditions sheet ---------- */
 function renderTrad(){const list=$('tradList');list.innerHTML='';
+  const head=(t,top)=>{const h=document.createElement('div');h.className='pre';h.style.margin=(top?'4px':'14px')+' 4px 6px';h.textContent=t;list.appendChild(h);};
+  const tog=(on,title,sub,fn)=>{const row=document.createElement('label');row.className='tog';
+    row.innerHTML=`<span class="box ${on?'on':''}">${on?'✓':''}</span><span style="flex:1"><b>${title}</b><br><span class="star-meta">${sub}</span></span>`;
+    row.onclick=fn; list.appendChild(row);};
+  head('DISPLAY',true);
+  tog(showArt,'Constellation pictures','Drawings behind the figures, for every lens (also the picture button at the right edge). Traditional artwork where it exists; drawings in green were made by Claude for Sky Lens',()=>{showArt=!showArt;syncLayers();renderTrad();saveState();});
+  if(ARTD.sufi) tog(artStyle==='sufi','Al-Sufi drawings for the Greek sky','Painted figures from the Ulugh Beg copy of al-Sufi\'s Book of Fixed Stars (15th c.) instead of the modern line drawings',()=>{artStyle=artStyle==='sufi'?'meuris':'sufi';renderTrad();saveState();});
+  tog(showDSO,'Nebulae, clusters and galaxies','The 110 Messier and 109 Caldwell objects and a few naked-eye extras, drawn at their true size; tap one for its facts (also the galaxy button at the right edge)',()=>{showDSO=!showDSO;syncLayers();renderTrad();saveState();});
+  tog(showGhost,'Greek ghost lines','Faint classical figures behind other traditions, for orientation (also the Gr button)',()=>{showGhost=!showGhost;syncLayers();renderTrad();saveState();});
+  tog(figColours,'Figure colours','Give neighbouring figures different colours (shades of red and dashes in night mode)',()=>{figColours=!figColours;renderTrad();saveState();});
+  tog(focusMode,'Focus mode','Highlight the figure at the centre of the screen and fade the rest',()=>{focusMode=!focusMode;renderTrad();saveState();});
+  head('TRADITIONS · TICK WHICH LENSES TO OFFER');
+  const pr=document.createElement('div'); pr.style.cssText='display:flex;gap:7px;flex-wrap:wrap;margin:0 2px 4px'; list.appendChild(pr); renderPresets(pr);
   const groups=[...new Set(TRADITIONS.map(t=>t.group))];
-  groups.forEach(g=>{const h=document.createElement('div');h.className='pre';h.style.margin='10px 4px 6px';h.textContent=g.toUpperCase();list.appendChild(h);
+  groups.forEach(g=>{const h=document.createElement('div');h.className='pre';h.style.margin='10px 4px 6px';h.style.opacity='.8';h.textContent=g.toUpperCase();list.appendChild(h);
     TRADITIONS.filter(t=>t.group===g).forEach(t=>{const row=document.createElement('label');row.className='tog';
       row.innerHTML=`<span class="box ${t.on?'on':''}">${t.on?'✓':''}</span><span style="flex:1"><b>${t.name}</b><br><span class="star-meta">${t.sub}</span></span>`;
       row.onclick=()=>{t.on=!t.on; if(!TRADITIONS.some(x=>x.on))t.on=true; renderTrad();renderLenses();updCount();saveState();};list.appendChild(row);});});
-  const g=document.createElement('label');g.className='tog';
-  g.innerHTML=`<span class="box ${showGhost?'on':''}">${showGhost?'✓':''}</span><span style="flex:1"><b>Greek ghost lines</b><br><span class="star-meta">Faint classical figures behind other traditions, for orientation</span></span>`;
-  g.onclick=()=>{showGhost=!showGhost;renderTrad();saveState();}; list.appendChild(g);
-  const fc=document.createElement('label');fc.className='tog';
-  fc.innerHTML=`<span class="box ${figColours?'on':''}">${figColours?'✓':''}</span><span style="flex:1"><b>Figure colours</b><br><span class="star-meta">Give neighbouring figures different colours (shades of red and dashes in night mode)</span></span>`;
-  fc.onclick=()=>{figColours=!figColours;renderTrad();saveState();}; list.appendChild(fc);
-  const fm=document.createElement('label');fm.className='tog';
-  fm.innerHTML=`<span class="box ${focusMode?'on':''}">${focusMode?'✓':''}</span><span style="flex:1"><b>Focus mode</b><br><span class="star-meta">Highlight the figure at the centre of the screen and fade the rest</span></span>`;
-  fm.onclick=()=>{focusMode=!focusMode;renderTrad();saveState();}; list.appendChild(fm);
-  const a=document.createElement('label');a.className='tog';
-  a.innerHTML=`<span class="box ${showArt?'on':''}">${showArt?'✓':''}</span><span style="flex:1"><b>Constellation artwork</b><br><span class="star-meta">Drawings behind the figures for every lens. Traditional artwork where it exists; drawings in green were made by Claude for Sky Lens</span></span>`;
-  a.onclick=()=>{showArt=!showArt;renderTrad();saveState();}; list.appendChild(a);
-  if(ARTD.sufi){ const s=document.createElement('div'); s.className=a.className; s.style.cssText=a.style.cssText;
-    s.innerHTML=`<span class="box ${artStyle==='sufi'?'on':''}">${artStyle==='sufi'?'✓':''}</span><span style="flex:1"><b>Al-Sufi drawings for the Greek sky</b><br><span class="star-meta">Painted figures from the Ulugh Beg copy of al-Sufi's Book of Fixed Stars (15th c.) instead of the modern line drawings</span></span>`;
-    s.onclick=()=>{artStyle=artStyle==='sufi'?'meuris':'sufi';renderTrad();saveState();}; list.appendChild(s); }
   const note=document.createElement('div');note.className='mut';note.style.margin='10px 4px';
-  note.textContent='Each lens redraws the sky with that tradition’s own figures and names. Most sets come from Stellarium’s sky-culture data; Arabic, Hungarian, Anishinaabe, Lakota, Haudenosaunee, Cherokee, Welsh and Hebrew were plotted by hand from published identifications and are simpler. Full tales so far: the Big Dipper, Cassiopeia, Cygnus, Lyra, Aquila, the Pleiades and Orion.';
+  note.textContent='Each lens redraws the sky with that tradition’s own figures and names. Most sets come from Stellarium’s sky-culture data; Arabic, Hungarian, Anishinaabe, Lakota, Haudenosaunee, Cherokee, Welsh and Hebrew were plotted by hand from published identifications and are simpler. Tales are written so far for '+TALE_CONS+' of the 88 constellations and the Pleiades. Tap any star, nebula, cluster or galaxy for its facts.';
   list.appendChild(note);
   const cr=document.createElement('div');cr.className='pre';cr.style.margin='12px 4px 4px';cr.style.lineHeight='1.5';
   let h='FIGURE DATA — adapted from the Stellarium sky cultures collection (reduced to lines and names):<br>';
   for(const cid in SC.cultures){const c=SC.cultures[cid]; if(c.hand)continue; h+='• '+c.name.replace(/</g,'&lt;')+' — '+c.credit.replace(/</g,'&lt;')+' ('+c.lic+')<br>';}
   h+='<br>PLOTTED BY HAND for Sky Lens from published identifications:<br>';
   for(const cid in SC.cultures){const c=SC.cultures[cid]; if(!c.hand)continue; h+='• '+c.name.replace(/</g,'&lt;')+' — '+c.credit.replace(/</g,'&lt;')+'<br>';}
-  h+='<br>ARTWORK — classical constellation drawings by Johan Meuris, from Stellarium (Free Art License 1.3), converted to transparent line art. Other traditions\' drawings from the Stellarium sky cultures: Aztec (Enrique Gómez Candelario et al., GPL v2), Belarusian and Inuit (Johan Meuris, Free Art License 1.3), Boorong (John Morieson & Alex Cherney, CC BY-SA 4.0), Hawaiian star lines (Kealoha Kaneakua, rev. Susanne M. Hoffmann, CC BY-SA 4.0), Northern Andes (after Pasto designs researched by Estelina Quinatoa, GPL v2), Hindu/Vedic (Tanmoy Saha & sanskrit-coders, CC BY-SA 4.0), Maya (E. Rodas-Quito & J. Mejuto after the Paris Codex, CC BY-NC-SA 4.0), Māori (Dan Smale, CC BY-SA 4.0). Al-Sufi drawings from the Ulugh Beg manuscript of the Book of Fixed Stars (public domain). DRAWINGS IN GREEN were made by Claude for Sky Lens: they are new drawings, not traditional artwork.<br>COMPASS — true north from the World Magnetic Model 2025 (NOAA NCEI / British Geological Survey, public domain).<br>';
+  h+='<br>ARTWORK — classical constellation drawings by Johan Meuris, from Stellarium (Free Art License 1.3), converted to transparent line art. Other traditions\' drawings from the Stellarium sky cultures: Aztec (Enrique Gómez Candelario et al., GPL v2), Belarusian and Inuit (Johan Meuris, Free Art License 1.3), Boorong (John Morieson & Alex Cherney, CC BY-SA 4.0), Hawaiian star lines (Kealoha Kaneakua, rev. Susanne M. Hoffmann, CC BY-SA 4.0), Northern Andes (after Pasto designs researched by Estelina Quinatoa, GPL v2), Hindu/Vedic (Tanmoy Saha & sanskrit-coders, CC BY-SA 4.0), Maya (E. Rodas-Quito & J. Mejuto after the Paris Codex, CC BY-NC-SA 4.0), Māori (Dan Smale, CC BY-SA 4.0). Al-Sufi drawings from the Ulugh Beg manuscript of the Book of Fixed Stars (public domain). DRAWINGS IN GREEN were made by Claude for Sky Lens: they are new drawings, not traditional artwork.<br>COMPASS — true north from the World Magnetic Model 2025 (NOAA NCEI / British Geological Survey, public domain).<br>STAR FACTS — HYG database v4.1 and AT-HYG v3.2 by David Nash, astronexus.com (CC BY-SA 4.0): distances from Gaia DR3 where available, otherwise Hipparcos; for the 93 brightest stars, distances and spectral types from published measurements as listed in Wikipedia\'s List of brightest stars (CC BY-SA 4.0). Temperatures, luminosities and sizes are estimates: temperature from spectral type (Pecaut &amp; Mamajek 2013) or colour (Ballesteros 2012), bolometric corrections from Flower (1996) as corrected by Torres (2010).<br>NEBULAE, CLUSTERS AND GALAXIES — positions, sizes and magnitudes from the HYG deep-sky catalogue (David Nash, CC BY-SA 2.5), from the Historically Corrected NGC; types and distances from Wikipedia\'s Messier object and Caldwell catalogue tables (CC BY-SA 4.0), with newer measurements for the Magellanic Clouds and the Helix Nebula.<br>';
   cr.innerHTML=h; list.appendChild(cr);
 }
 function updCount(){$('tradCount').textContent=TRADITIONS.filter(t=>t.on).length+' of '+TRADITIONS.length+' on';}
 const PRESETS={}; GROUP_ORDER.forEach(g=>{const ids=TRADITIONS.filter(t=>t.group===g).map(t=>t.id); if(ids.length)PRESETS[g]=ids;}); PRESETS.All=TRADITIONS.map(t=>t.id);
-function renderPresets(){const el=$('tradPresets');el.innerHTML='';Object.keys(PRESETS).forEach(p=>{const b=document.createElement('button');b.className='chip';b.textContent=p;
+function renderPresets(el){el.innerHTML='';Object.keys(PRESETS).forEach(p=>{const b=document.createElement('button');b.className='chip';b.textContent=p;
   b.onclick=()=>{const set=new Set(PRESETS[p]);TRADITIONS.forEach(t=>t.on=set.has(t.id));if(!TRADITIONS.some(x=>x.on))TRADITIONS[0].on=true;renderTrad();renderLenses();updCount();saveState();};el.appendChild(b);});}
-$('btnTrad').onclick=()=>{renderTrad();renderPresets();updCount();$('tradSheet').classList.add('up');};
+$('btnTrad').onclick=()=>{renderTrad();updCount();$('tradSheet').classList.add('up');};
 $('tradClose').onclick=()=>$('tradSheet').classList.remove('up');
 $('nightToggle').onchange=e=>setNight(e.target.checked);
 $('nightToggle').checked=document.documentElement.classList.contains('night'); $('btnNight').classList.toggle('onb',$('nightToggle').checked);
