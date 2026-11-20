@@ -706,14 +706,27 @@ window.SKYTALES=[
    [
     "The Little Bear — Wikipedia",
     "https://en.wikipedia.org/wiki/Ursa_Minor"
+   ],
+   [
+    "Cree mythology written in the stars (CBC)",
+    "https://amp.cbc.ca/lite/story/1.3402227"
    ]
   ],
-  "figs": {},
+  "figs": {
+   "cree_hand": [
+    "The Going Home Star"
+   ]
+  },
   "tales": {
    "greek": {
     "title": "The Little Bear and the Pole",
     "status": "standard account of the Greek myth",
     "text": "The Little Bear has two Greek stories. In one it is Arcas, son of Callisto, lifted into the sky beside his mother, the Great Bear, at the very moment he was about to spear her without knowing who she was. In the other, older one, the two bears are two nymphs of Mount Ida on Crete, Helike and Kynosoura, who hid the infant Zeus in a cave from his father Kronos, who swallowed his children. When Zeus came to power he set his nurses in the sky as bears. Kynosoura means 'dog's tail,' and the word survives in English: a cynosure is something everyone's eyes are drawn to, as sailors' eyes were drawn to these stars.\n\nThe Greeks said that their own sailors steered by the Great Bear, which is bright and easy to find, but that the Phoenicians — the great seafarers of the ancient world — steered by the Little Bear, which is fainter but turns in a much tighter circle around the pole and so gives a truer north. The philosopher Thales of Miletus, around 600 BC, was said to have introduced the Little Bear to the Greeks for that reason.\n\nAt the tip of its tail is Polaris, the North Star. It has not always held the job. Because the Earth's axis wobbles slowly, like a spinning top, the pole drifts across the sky in a great circle every twenty-six thousand years. When the pyramids were built, the pole star was Thuban, in the Dragon. In the age of the Trojan War, the nearest bright star to the pole was Kochab, at the other end of the Little Bear's bowl. Polaris is still creeping closer; it will be nearest the pole around the year 2100, and then slowly move away.\n\nThe height of Polaris above your horizon equals your latitude. From Toronto it stands about 44 degrees up, and everything else in the sky turns around it.\n\nPolaris is not especially bright, but it is a yellow supergiant more than a thousand times as luminous as the Sun, about 430 light years away — and it pulses gently, a Cepheid variable, brightening and fading every four days."
+   },
+   "cree_hand": {
+    "title": "Keewatin — the Going Home Star",
+    "status": "documented",
+    "text": "The Cree call the North Star Keewatin, the Going Home Star; another Cree name for it, Ekakatchet Atchakos, means 'it stands still'. While the rest of the sky wheels around it through the night and through the year, this one star stays put above the northern horizon, so a traveller who can find it always knows which way is north, and from there the way home. Keewatin is also the Cree word for the north wind.\n\nThe Cree author David A. Robertson describes Keewatin as a traditional navigation star, and writes of how comforting it is that people of every culture, whatever their language or beliefs, look up and see the same sky. In Wilfred Buck's Cree star knowledge the rest of the Little Dipper is Atima Atchakosuk, the Dog Stars, and Buck tells Keewatin's own story in his book Tipiskawi Kisik: Night Sky Star Stories."
    }
   }
  },
